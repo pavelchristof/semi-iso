@@ -52,7 +52,8 @@ module Control.Lens.SemiIso (
     unit,
     swapped,
     associated,
-    constant
+    constant,
+    exact
     ) where
 
 import Control.Lens.Internal.SemiIso
@@ -114,10 +115,22 @@ associated = iso (\(a, (b, c)) -> ((a, b), c)) (\((a, b), c) -> (a, (b, c)))
 
 -- | \-> Always returns the argument.
 --
+-- \<- Maps everything to a @()@.
+--
+-- Note that this isn't an @Iso'@ because
+--
+-- > unapply (constant x) >=> apply (constant x) /= id
+--
+-- But SemiIso laws do hold.
+constant :: a -> SemiIso' () a
+constant x = semiIso (\_ -> Right x) (\_ -> Right ())
+
+-- | \-> Always returns the argument.
+--
 -- \<- Filters out all values not equal to the argument.
-constant :: Eq a => a -> SemiIso' () a
-constant x = semiIso f g
+exact :: Eq a => a -> SemiIso' () a
+exact x = semiIso f g
   where
     f _ = Right x
     g y | x == y    = Right ()
-        | otherwise = Left "constant: not equal"
+        | otherwise = Left "exact: not equal"

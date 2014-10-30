@@ -68,7 +68,11 @@ module Control.Lens.SemiIso (
     bifoldr,
     bifoldr1,
     bifoldl,
-    bifoldl1
+    bifoldl1,
+
+    -- * Profunctor.
+    Profunctor(..),
+    Exposed(..)
     ) where
 
 import Control.Lens.Internal.SemiIso
@@ -93,7 +97,7 @@ type SemiIso s t a b = forall p f. (Exposed (Either String) p, Traversable f) =>
 type SemiIso' s a = SemiIso s s a a
 
 -- | When you see this as an argument to a function, it expects a 'SemiIso'.
-type ASemiIso s t a b = Barter a b a (Identity b) -> Barter a b s (Identity t)
+type ASemiIso s t a b = Retail a b a (Identity b) -> Retail a b s (Identity t)
 
 -- | When you see this as an argument to a function, it expects a 'SemiIso''.
 type ASemiIso' s a = ASemiIso s s a a
@@ -107,8 +111,8 @@ semiIso sa bt = merge . dimap sa (sequenceA . fmap bt) . expose
 withSemiIso :: ASemiIso s t a b 
             -> ((s -> Either String a) -> (b -> Either String t) -> r) 
             -> r
-withSemiIso ai k = case ai (Barter Right (Right . Identity)) of
-                        Barter sa bt -> k sa (rmap (runIdentity . sequenceA) bt)
+withSemiIso ai k = case ai (Retail Right (Right . Identity)) of
+                        Retail sa bt -> k sa (rmap (runIdentity . sequenceA) bt)
 
 -- | Applies the 'SemiIso'.
 apply :: ASemiIso s t a b -> s -> Either String a

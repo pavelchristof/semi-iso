@@ -53,13 +53,18 @@ module Control.Lens.SemiIso (
     swapped,
     associated,
     constant,
-    exact
+    exact,
+
+    -- * Folds.
+    bifoldr
     ) where
 
 import Control.Lens.Internal.SemiIso
 import Control.Lens.Iso
+import Control.Monad
 import Data.Functor.Identity
 import Data.Traversable
+import Data.Foldable
 
 -- | A semi-isomorphism is a partial isomorphism with weakened laws.
 -- 
@@ -134,3 +139,23 @@ exact x = semiIso f g
     f _ = Right x
     g y | x == y    = Right ()
         | otherwise = Left "exact: not equal"
+
+-- | Constructs a bidirectional fold.
+--
+-- \-> Right folds using the (->) part of the given semi-iso.
+--
+-- \<- Right unfolds using the (<-) part of the given semi-iso.
+bifoldr :: ASemiIso (b, a) (Maybe (b, a)) a a -> SemiIso' (a, [b]) a
+bifoldr ai = semiIso (f ai) (g ai)
+  where
+    f = uncurry . foldrM . curry . apply
+    g = unfoldrM . unapply
+
+    unfoldrM :: Monad m => (a -> m (Maybe (b, a))) -> a -> m (a, [b])
+    unfoldrM f a = do
+        r <- f a
+        case r of
+          Just (b, new_a) -> do
+              (final_a, bs) <- unfoldrM f new_a
+              return (final_a, b : bs)
+          Nothing -> return (a, [])

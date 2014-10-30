@@ -57,7 +57,18 @@ module Control.Lens.SemiIso (
     exact,
 
     -- * Folds.
-    bifoldr
+    foldlM1,
+    foldrM1,
+    unfoldlM,
+    unfoldlM1,
+    unfoldrM,
+    unfoldrM1,
+
+    -- * Bidirectional folds.
+    bifoldr,
+    bifoldr1,
+    bifoldl,
+    bifoldl1
     ) where
 
 import Control.Lens.Internal.SemiIso
@@ -141,22 +152,99 @@ exact x = semiIso f g
     g y | x == y    = Right ()
         | otherwise = Left "exact: not equal"
 
--- | Constructs a bidirectional fold.
---
--- \-> Right folds using the (->) part of the given semi-iso.
---
--- \<- Right unfolds using the (<-) part of the given semi-iso.
-bifoldr :: ASemiIso (b, a) (Maybe (b, a)) a a -> SemiIso' (a, [b]) a
-bifoldr ai = semiIso (f ai) (g ai)
-  where
-    f = uncurry . foldrM . curry . apply
-    g = unfoldrM . unapply
+-- | Monadic counterpart of 'foldl1' (or non-empty list counterpart of 'foldlM').
+foldlM1 :: Monad m => (a -> a -> m a) -> [a] -> m a
+foldlM1 f (x:xs) = foldlM f x xs
+foldlM1 _ []     = fail "foldlM1: empty list"
 
-    unfoldrM :: Monad m => (a -> m (Maybe (b, a))) -> a -> m (a, [b])
-    unfoldrM f a = do
+-- | Monadic counterpart of 'foldr1' (or non-empty list counterpart of 'foldrM').
+foldrM1 :: Monad m => (a -> a -> m a) -> [a] -> m a
+foldrM1 _ [x]    = return x
+foldrM1 f (x:xs) = foldrM1 f xs >>= f x
+foldrM1 _ []     = fail "foldrM1: empty list"
+
+-- | Monadic counterpart of 'unfoldr'.
+unfoldrM :: Monad m => (a -> m (Maybe (b, a))) -> a -> m (a, [b])
+unfoldrM f a = do
+    r <- f a
+    case r of
+      Just (b, new_a) -> do
+          (final_a, bs) <- unfoldrM f new_a
+          return (final_a, b : bs)
+      Nothing -> return (a, [])
+
+-- | A variant of 'unfoldrM' that always produces a non-empty list.
+unfoldrM1 :: Monad m => (a -> m (Maybe (a, a))) -> a -> m [a]
+unfoldrM1 f a = do
+    r <- f a
+    case r of
+      Just (b, new_a) -> do
+          bs <- unfoldrM1 f new_a
+          return (b : bs)
+      Nothing -> return [a]
+
+-- | Monadic counterpart of 'unfoldl'.
+unfoldlM :: Monad m => (a -> m (Maybe (a, b))) -> a -> m (a, [b])
+unfoldlM f a0 = go a0 []
+  where
+    go a bs = do
         r <- f a
         case r of
-          Just (b, new_a) -> do
-              (final_a, bs) <- unfoldrM f new_a
-              return (final_a, b : bs)
-          Nothing -> return (a, [])
+          Just (new_a, b) -> go new_a (b : bs)
+          Nothing -> return (a, bs)
+
+-- | A variant of 'unfoldlM' that always produces a non-empty list.
+unfoldlM1 :: Monad m => (a -> m (Maybe (a, a))) -> a -> m [a]
+unfoldlM1 f a0 = go a0 []
+  where
+    go a bs = do
+        r <- f a
+        case r of
+          Just (new_a, b) -> go new_a (b : bs)
+          Nothing -> return (a : bs)
+
+-- | Constructs a bidirectional fold.
+--
+-- \-> Right unfolds using the (->) part of the given semi-iso.
+--
+-- \<- Right folds using the (<-) part of the given semi-iso.
+bifoldr :: ASemiIso a a (Maybe (b, a)) (b, a) -> SemiIso' a (a, [b])
+bifoldr ai = semiIso (uf ai) (f ai)
+  where
+    f = uncurry . foldrM . curry . unapply
+    uf = unfoldrM . apply
+
+-- | Constructs a bidirectional fold.
+--
+-- \-> Right unfolds using the (->) part of the given semi-iso. It should
+-- produce an non-empty list.
+--
+-- \<- Right folds a non-empty list using the (<-) part of the given semi-iso.
+bifoldr1 :: ASemiIso a a (Maybe (a, a)) (a, a) -> SemiIso' a [a]
+bifoldr1 ai = semiIso (uf ai) (f ai)
+  where
+    f = foldrM1 . curry . unapply
+    uf = unfoldrM1 . apply
+
+-- | Constructs a bidirectional fold.
+--
+-- \-> Left unfolds using the (->) part of the given semi-iso.
+--
+-- \<- Left folds using the (<-) part of the given semi-iso.
+bifoldl :: ASemiIso a a (Maybe (a, b)) (a, b) -> SemiIso' a (a, [b])
+bifoldl ai = semiIso (uf ai) (f ai)
+  where
+    f = uncurry . foldlM . curry . unapply
+    uf = unfoldlM . apply
+
+-- | Constructs a bidirectional fold.
+--
+-- \-> Left unfolds using the (->) part of the given semi-iso. It should
+-- produce an non-empty list.
+--
+-- \<- Left folds a non-empty list using the (<-) part of the given semi-iso.
+bifoldl1 :: ASemiIso a a (Maybe (a, a)) (a, a) -> SemiIso' a [a]
+bifoldl1 ai = semiIso (uf ai) (f ai)
+  where
+    f = foldlM1 . curry . unapply
+    uf = unfoldlM1 . apply

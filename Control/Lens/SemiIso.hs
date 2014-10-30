@@ -1,5 +1,6 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
 {- |
 Module      :  Data.Lens.SemiIso
 Description :  Semi-isomorphisms.
@@ -61,10 +62,10 @@ module Control.Lens.SemiIso (
 
 import Control.Lens.Internal.SemiIso
 import Control.Lens.Iso
-import Control.Monad
-import Data.Functor.Identity
-import Data.Traversable
 import Data.Foldable
+import Data.Functor.Identity
+import Data.Profunctor.Exposed
+import Data.Traversable
 
 -- | A semi-isomorphism is a partial isomorphism with weakened laws.
 -- 
@@ -75,7 +76,7 @@ import Data.Foldable
 --
 -- Every 'Prism' is a 'SemiIso'.
 -- Every 'Iso' is a 'Prism'.
-type SemiIso s t a b = forall p f. (Failure p, Traversable f) => p a (f b) -> p s (f t)
+type SemiIso s t a b = forall p f. (Exposed (Either String) p, Traversable f) => p a (f b) -> p s (f t)
 
 -- | Non-polymorphic variant of 'SemiIso'.
 type SemiIso' s a = SemiIso s s a a
@@ -89,7 +90,7 @@ type ASemiIso' s a = ASemiIso s s a a
 -- | Constructs a semi isomorphism from a pair of functions that can
 -- fail with an error message.
 semiIso :: (s -> Either String a) -> (b -> Either String t) -> SemiIso s t a b
-semiIso sa bt = tie . dimap sa (sequenceA . fmap bt) . attach
+semiIso sa bt = merge . dimap sa (sequenceA . fmap bt) . expose
 
 -- | Extracts the two functions that characterize the 'SemiIso'.
 withSemiIso :: ASemiIso s t a b 

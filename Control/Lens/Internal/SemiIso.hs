@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {- |
 Module      :  Data.Lens.Internal.SemiIso
 Description :  Internals of a SemiIso.
@@ -11,6 +13,7 @@ module Control.Lens.Internal.SemiIso where
 
 import Control.Monad
 import Data.Profunctor
+import Data.Profunctor.Exposed
 
 -- | Type used internally to access 'SemiIso'.
 --
@@ -27,13 +30,40 @@ instance Choice (Barter s t) where
     right' (Barter as st) = Barter 
         (either (\_ -> Left "partial iso failed") as) (fmap Right . st)
 
--- | Provides a profunctor the ability to fail with an error message.
+-- Proof of 'Exposed' laws:
 --
--- This class could use some laws. It is certainly a bit ad-hoc.
-class Profunctor p => Failure p where
-    tie :: p a (Either String b) -> p a b
-    attach :: p a b -> p (Either String a) b
-
-instance Failure (Barter s t) where
-    tie (Barter f g) = Barter f (join . g)
-    attach (Barter f g) = Barter (>>= f) g
+-- > merge . rmap return = id
+--
+-- merge . rmap return $ Barter l r =
+-- merge $ Barter l (return . r) =
+-- Barter l (join . return . r) =
+-- Barter l r
+--
+-- > lmap return . expose = id
+--
+-- lmap return . expose $ Barter l r =
+-- lmap return $ Barter (>>= l) r =
+-- Barter ((>>= l) . return) r =
+-- Barter (join . fmap l . return) r =
+-- Barter (join . return . l) r =
+-- Barter l r
+--
+-- > rmap (>>= f) = merge . rmap (fmap f)
+--
+-- rmap (>>= f) $ Barter l r =
+-- Barter l ((>>= f) . r) =
+-- Barter l (join . fmap f . r) =
+-- merge $ Barter l (fmap f . r) =
+-- merge . rmap (fmap f) $ Barter l r
+--
+-- > lmap (fmap f) . expose = expose . lmap f
+--
+-- lmap (fmap f) . expose $ Barter l r =
+-- lmap (fmap f) $ Barter (>>= l) r =
+-- Barter ((>>= l) . fmap f) r =
+-- Barter (>>= (l . f)) r =
+-- expose $ Barter (l . f) r =
+-- expose . lmap f $ Barter l r
+instance Exposed (Either String) (Barter s t) where
+    expose (Barter l r) = Barter (>>= l) r
+    merge (Barter l r) = Barter l (join . r)

@@ -43,8 +43,16 @@ module Control.Lens.SemiIso (
     -- * Constructing semi-isos.
     semiIso,
 
-    -- * Consuming semi-isos.
+    -- * Transforming semi-isos.
     withSemiIso,
+    attempt,
+    attemptAp,
+    attemptUn,
+    attempt_,
+    attemptAp_,
+    attemptUn_,
+
+    -- * Consuming semi-isos.
     fromSemi,
     apply,
     unapply,
@@ -113,6 +121,27 @@ withSemiIso :: ASemiIso s t a b
             -> r
 withSemiIso ai k = case ai (Retail Right (Right . Identity)) of
                         Retail sa bt -> k sa (rmap (runIdentity . sequenceA) bt)
+
+attempt :: ASemiIso s t a b -> SemiIso s (Either String t) (Either String a) b
+attempt = attemptAp . attemptUn
+
+attemptAp :: ASemiIso s t a b -> SemiIso s t (Either String a) b
+attemptAp = undefined 
+
+attemptUn :: ASemiIso s t a b -> SemiIso s (Either String t) a b
+attemptUn = undefined
+
+discard :: Either a b -> Maybe b
+discard = either (const Nothing) Just
+
+attempt_ :: ASemiIso s t a b -> SemiIso s (Maybe t) (Maybe a) b
+attempt_ ai = rmap (fmap discard) . attempt ai . lmap discard
+
+attemptAp_ :: ASemiIso s t a b -> SemiIso s t (Maybe a) b
+attemptAp_ ai = attemptAp ai . lmap discard
+
+attemptUn_ :: ASemiIso s t a b -> SemiIso s (Maybe t) a b
+attemptUn_ ai = rmap (fmap discard) . attemptUn ai
 
 -- | Applies the 'SemiIso'.
 apply :: ASemiIso s t a b -> s -> Either String a

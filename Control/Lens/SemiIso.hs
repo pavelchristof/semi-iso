@@ -122,24 +122,35 @@ withSemiIso :: ASemiIso s t a b
 withSemiIso ai k = case ai (Retail Right (Right . Identity)) of
                         Retail sa bt -> k sa (rmap (runIdentity . sequenceA) bt)
 
+-- | Transforms the semi-iso so that applying it in both directions never fails,
+-- but instead catches any errors and returns them as an @Either String a@.
 attempt :: ASemiIso s t a b -> SemiIso s (Either String t) (Either String a) b
 attempt = attemptAp . attemptUn
 
+-- | Transforms the semi-iso so that applying it in direction (->) never fails,
+-- but instead catches any errors and returns them as an @Either String a@.
 attemptAp :: ASemiIso s t a b -> SemiIso s t (Either String a) b
-attemptAp = undefined 
+attemptAp ai = withSemiIso ai $ \l r -> semiIso (Right . l) r
 
+-- | Transforms the semi-iso so that applying it in direction (<-) never fails,
+-- but instead catches any errors and returns them as an @Either String a@.
 attemptUn :: ASemiIso s t a b -> SemiIso s (Either String t) a b
-attemptUn = undefined
+attemptUn ai = withSemiIso ai $ \l r -> semiIso l (Right . r)
 
 discard :: Either a b -> Maybe b
 discard = either (const Nothing) Just
 
+-- | Transforms the semi-iso like 'attempt', but ignores the error message.
 attempt_ :: ASemiIso s t a b -> SemiIso s (Maybe t) (Maybe a) b
 attempt_ ai = rmap (fmap discard) . attempt ai . lmap discard
 
+-- | Transforms the semi-iso like 'attemptAp', but ignores the error message.
+--
+-- Very useful when you want to bifold using a prism.
 attemptAp_ :: ASemiIso s t a b -> SemiIso s t (Maybe a) b
 attemptAp_ ai = attemptAp ai . lmap discard
 
+-- | Transforms the semi-iso like 'attemptUn', but ignores the error message.
 attemptUn_ :: ASemiIso s t a b -> SemiIso s (Maybe t) a b
 attemptUn_ ai = rmap (fmap discard) . attemptUn ai
 

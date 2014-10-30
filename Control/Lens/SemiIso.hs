@@ -2,7 +2,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {- |
-Module      :  Data.Lens.SemiIso
+Module      :  Control.Lens.SemiIso
 Description :  Semi-isomorphisms.
 Copyright   :  (c) Paweł Nowak
 License     :  MIT

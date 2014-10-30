@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {- |
-Module      :  Data.Lens.Internal.SemiIso
+Module      :  Control.Lens.Internal.SemiIso
 Description :  Internals of a SemiIso.
 Copyright   :  (c) Paweł Nowak
 License     :  MIT

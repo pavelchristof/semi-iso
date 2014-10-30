@@ -76,11 +76,7 @@ module Control.Lens.SemiIso (
     bifoldr,
     bifoldr1,
     bifoldl,
-    bifoldl1,
-
-    -- * Profunctor.
-    Profunctor(..),
-    Exposed(..)
+    bifoldl1
     ) where
 
 import Control.Lens.Internal.SemiIso

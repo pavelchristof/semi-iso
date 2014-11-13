@@ -13,8 +13,6 @@ The most interesting property of that class is that it can be
 instantiated by both covariant (like Parser) and contravariant (like Printer) 
 functors. Therefore it can be used as a common interface to unify
 parsing and pretty printing.
-
-Operator names are up to bikeshedding :)
 -}
 module Data.SemiIsoFunctor where
 

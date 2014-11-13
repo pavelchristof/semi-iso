@@ -43,11 +43,11 @@ class SemiIsoFunctor f where
     -- | The contravariant map.
     simap :: ASemiIso' a b -> f b -> f a
     simap = simapCo . fromSemi
-    
+
     -- | The covariant map.
     simapCo :: ASemiIso' a b -> f a -> f b
     simapCo = simap . fromSemi
-    
+
     {-# MINIMAL simap | simapCo #-}
 
 -- | A infix operator for 'simap'.

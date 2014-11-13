@@ -42,12 +42,12 @@ infixl 5 /*/, /*, */
 class SemiIsoFunctor f where
     -- | The contravariant map.
     simap :: ASemiIso' a b -> f b -> f a
-    simap = simapCo . fromSemi
-    
+    simap = simapCo . rev
+
     -- | The covariant map.
     simapCo :: ASemiIso' a b -> f a -> f b
-    simapCo = simap . fromSemi
-    
+    simapCo = simap . rev
+
     {-# MINIMAL simap | simapCo #-}
 
 -- | A infix operator for 'simap'.

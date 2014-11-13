@@ -1,5 +1,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleContexts #-}
 {- |
 Module      :  Control.Lens.SemiIso
@@ -39,30 +41,41 @@ module Control.Lens.SemiIso (
     SemiIso',
     ASemiIso,
     ASemiIso',
-    
+
+    -- * Patterns.
+    pattern SemiIso,
+
     -- * Constructing semi-isos.
     semiIso,
 
-    -- * Transforming semi-isos.
-    withSemiIso,
-    attempt,
-    attemptAp,
-    attemptUn,
-    attempt_,
-    attemptAp_,
-    attemptUn_,
-
     -- * Consuming semi-isos.
-    fromSemi,
     apply,
     unapply,
-    
+    withSemiIso,
+    viewSemiIso,
+
     -- * Common semi-isomorphisms and isomorphisms.
     unit,
     swapped,
     associated,
     constant,
     exact,
+
+    -- * Semi-isos for numbers.
+    _Negative,
+    _Positive,
+
+    -- * Transforming semi-isos.
+    rev,
+    prod,
+    elimFirst,
+    elimSecond,
+    attempt,
+    attemptAp,
+    attemptUn,
+    attempt_,
+    attemptAp_,
+    attemptUn_,
 
     -- * Folds.
     foldlM1,
@@ -79,6 +92,7 @@ module Control.Lens.SemiIso (
     bifoldl1
     ) where
 
+import Control.Arrow
 import Control.Lens.Internal.SemiIso
 import Control.Lens.Iso
 import Data.Foldable
@@ -95,7 +109,8 @@ import Data.Traversable
 --
 -- Every 'Prism' is a 'SemiIso'.
 -- Every 'Iso' is a 'Prism'.
-type SemiIso s t a b = forall p f. (Exposed (Either String) p, Traversable f) => p a (f b) -> p s (f t)
+type SemiIso s t a b = forall p f. (Exposed (Either String) p, Traversable f) 
+                     => p a (f b) -> p s (f t)
 
 -- | Non-polymorphic variant of 'SemiIso'.
 type SemiIso' s a = SemiIso s s a a
@@ -106,10 +121,22 @@ type ASemiIso s t a b = Retail a b a (Identity b) -> Retail a b s (Identity t)
 -- | When you see this as an argument to a function, it expects a 'SemiIso''.
 type ASemiIso' s a = ASemiIso s s a a
 
+-- | A nice pattern synonym for SemiIso's. Gives you the two functions, just like
+-- 'viewSemiIso' or 'fromSemiIso'.
+pattern SemiIso sa bt <- (viewSemiIso -> (sa, bt))
+
 -- | Constructs a semi isomorphism from a pair of functions that can
 -- fail with an error message.
 semiIso :: (s -> Either String a) -> (b -> Either String t) -> SemiIso s t a b
 semiIso sa bt = merge . dimap sa (sequenceA . fmap bt) . expose
+
+-- | Applies the 'SemiIso'.
+apply :: ASemiIso s t a b -> s -> Either String a
+apply (SemiIso sa _) = sa
+
+-- | Applies the 'SemiIso' in the opposite direction.
+unapply :: ASemiIso s t a b -> b -> Either String t
+unapply (SemiIso _ bt) = bt
 
 -- | Extracts the two functions that characterize the 'SemiIso'.
 withSemiIso :: ASemiIso s t a b 
@@ -118,49 +145,9 @@ withSemiIso :: ASemiIso s t a b
 withSemiIso ai k = case ai (Retail Right (Right . Identity)) of
                         Retail sa bt -> k sa (rmap (runIdentity . sequenceA) bt)
 
--- | Transforms the semi-iso so that applying it in both directions never fails,
--- but instead catches any errors and returns them as an @Either String a@.
-attempt :: ASemiIso s t a b -> SemiIso s (Either String t) (Either String a) b
-attempt = attemptAp . attemptUn
-
--- | Transforms the semi-iso so that applying it in direction (->) never fails,
--- but instead catches any errors and returns them as an @Either String a@.
-attemptAp :: ASemiIso s t a b -> SemiIso s t (Either String a) b
-attemptAp ai = withSemiIso ai $ \l r -> semiIso (Right . l) r
-
--- | Transforms the semi-iso so that applying it in direction (<-) never fails,
--- but instead catches any errors and returns them as an @Either String a@.
-attemptUn :: ASemiIso s t a b -> SemiIso s (Either String t) a b
-attemptUn ai = withSemiIso ai $ \l r -> semiIso l (Right . r)
-
-discard :: Either a b -> Maybe b
-discard = either (const Nothing) Just
-
--- | Transforms the semi-iso like 'attempt', but ignores the error message.
-attempt_ :: ASemiIso s t a b -> SemiIso s (Maybe t) (Maybe a) b
-attempt_ ai = rmap (fmap discard) . attempt ai . lmap discard
-
--- | Transforms the semi-iso like 'attemptAp', but ignores the error message.
---
--- Very useful when you want to bifold using a prism.
-attemptAp_ :: ASemiIso s t a b -> SemiIso s t (Maybe a) b
-attemptAp_ ai = attemptAp ai . lmap discard
-
--- | Transforms the semi-iso like 'attemptUn', but ignores the error message.
-attemptUn_ :: ASemiIso s t a b -> SemiIso s (Maybe t) a b
-attemptUn_ ai = rmap (fmap discard) . attemptUn ai
-
--- | Applies the 'SemiIso'.
-apply :: ASemiIso s t a b -> s -> Either String a
-apply ai = withSemiIso ai $ \l _ -> l
-
--- | Applies the 'SemiIso' in the opposite direction.
-unapply :: ASemiIso s t a b -> b -> Either String t
-unapply ai = withSemiIso ai $ \_ r -> r
-
--- | Reverses a 'SemiIso'.
-fromSemi :: ASemiIso s t a b -> SemiIso b a t s
-fromSemi ai = withSemiIso ai $ \l r -> semiIso r l
+-- | Extracts the two functions that characterize the 'SemiIso'.
+viewSemiIso :: ASemiIso s t a b -> (s -> Either String a, b -> Either String t)
+viewSemiIso ai = withSemiIso ai (,)
 
 -- | A trivial isomorphism between a and (a, ()).
 unit :: Iso' a (a, ())
@@ -191,6 +178,65 @@ exact x = semiIso f g
     f _ = Right x
     g y | x == y    = Right ()
         | otherwise = Left "exact: not equal"
+
+_Negative :: Num a => SemiIso' a a
+_Negative = undefined
+
+_Positive :: Num a => SemiIso' a a
+_Positive = undefined
+
+-- | Reverses a 'SemiIso'.
+rev :: ASemiIso s t a b -> SemiIso b a t s
+rev ai = withSemiIso ai $ \l r -> semiIso r l
+
+-- | A product of SemiIso's.
+prod :: ASemiIso s t a b -> ASemiIso s' t' a' b' 
+     -> SemiIso (s, s') (t, t') (a, a') (b, b')
+prod (SemiIso sa bt) (SemiIso sa' bt') = semiIso
+    (runKleisli (Kleisli sa *** Kleisli sa')) 
+    (runKleisli (Kleisli bt *** Kleisli bt'))
+
+-- | In the non-polymorphic case uses an @SemiIso a ()@ to construct a
+-- @SemiIso (a, b) b@, i.e. eliminates the first pair element.
+elimFirst :: ASemiIso s' t' () () -> SemiIso (s', t) (t', t) t t
+elimFirst ai = swapped . elimSecond ai
+
+-- | In the non-polymorphic case uses an @SemiIso b ()@ to construct a
+-- @SemiIso (a, b) a@, i.e. eliminates the second pair element.
+elimSecond :: ASemiIso s' t' () () -> SemiIso (t, s') (t, t') t t
+elimSecond ai = prod id ai . rev unit
+
+-- | Transforms the semi-iso so that applying it in both directions never fails,
+-- but instead catches any errors and returns them as an @Either String a@.
+attempt :: ASemiIso s t a b -> SemiIso s (Either String t) (Either String a) b
+attempt = attemptAp . attemptUn
+
+-- | Transforms the semi-iso so that applying it in direction (->) never fails,
+-- but instead catches any errors and returns them as an @Either String a@.
+attemptAp :: ASemiIso s t a b -> SemiIso s t (Either String a) b
+attemptAp (SemiIso sa bt) = semiIso (Right . sa) bt
+
+-- | Transforms the semi-iso so that applying it in direction (<-) never fails,
+-- but instead catches any errors and returns them as an @Either String a@.
+attemptUn :: ASemiIso s t a b -> SemiIso s (Either String t) a b
+attemptUn (SemiIso sa bt) = semiIso sa (Right . bt)
+
+discard :: Either a b -> Maybe b
+discard = either (const Nothing) Just
+
+-- | Transforms the semi-iso like 'attempt', but ignores the error message.
+attempt_ :: ASemiIso s t a b -> SemiIso s (Maybe t) (Maybe a) b
+attempt_ ai = rmap (fmap discard) . attempt ai . lmap discard
+
+-- | Transforms the semi-iso like 'attemptAp', but ignores the error message.
+--
+-- Very useful when you want to bifold using a prism.
+attemptAp_ :: ASemiIso s t a b -> SemiIso s t (Maybe a) b
+attemptAp_ ai = attemptAp ai . lmap discard
+
+-- | Transforms the semi-iso like 'attemptUn', but ignores the error message.
+attemptUn_ :: ASemiIso s t a b -> SemiIso s (Maybe t) a b
+attemptUn_ ai = rmap (fmap discard) . attemptUn ai
 
 -- | Monadic counterpart of 'foldl1' (or non-empty list counterpart of 'foldlM').
 foldlM1 :: Monad m => (a -> a -> m a) -> [a] -> m a

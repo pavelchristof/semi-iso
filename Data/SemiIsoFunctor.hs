@@ -63,7 +63,15 @@ class SemiIsoFunctor f where
 -- 
 -- > TODO (they should be fine)
 class SemiIsoFunctor f => SemiIsoApply f where
+    siunit :: f ()
+    siunit = sipure id
+
     sipure :: ASemiIso' a () -> f a
+    sipure ai = ai /$/ siunit
+
+    sipureCo :: ASemiIso' () a -> f a
+    sipureCo ai = ai `simapCo` siunit
+
     (/*/) :: f a -> f b -> f (a, b)
 
     (/*)  :: f a -> f () -> f a
@@ -72,7 +80,7 @@ class SemiIsoFunctor f => SemiIsoApply f where
     (*/)  :: f () -> f b -> f b
     f */ g = unit . swapped /$/ f /*/ g
 
-    {-# MINIMAL sipure, (/*/) #-}
+    {-# MINIMAL (siunit | sipure), (/*/) #-}
 
 -- | Equivalent of 'Alternative' for 'SemiIsoFunctor'.
 --

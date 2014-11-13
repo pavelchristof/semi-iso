@@ -13,8 +13,6 @@ The most interesting property of that class is that it can be
 instantiated by both covariant (like Parser) and contravariant (like Printer) 
 functors. Therefore it can be used as a common interface to unify
 parsing and pretty printing.
-
-Operator names are up to bikeshedding :)
 -}
 module Data.SemiIsoFunctor where
 
@@ -25,6 +23,8 @@ import Control.Lens.SemiIso
 infixl 3 /|/
 infixl 4 /$/
 infixl 5 /*/, /*, */
+infixl 1 //=
+infixr 1 =//
 
 -- | A functor from the category of semi-isomorphisms to Hask.
 --
@@ -63,7 +63,15 @@ class SemiIsoFunctor f where
 -- 
 -- > TODO (they should be fine)
 class SemiIsoFunctor f => SemiIsoApply f where
+    siunit :: f ()
+    siunit = sipure id
+
     sipure :: ASemiIso' a () -> f a
+    sipure ai = ai /$/ siunit
+
+    sipureCo :: ASemiIso' () a -> f a
+    sipureCo ai = ai `simapCo` siunit
+
     (/*/) :: f a -> f b -> f (a, b)
 
     (/*)  :: f a -> f () -> f a
@@ -72,7 +80,7 @@ class SemiIsoFunctor f => SemiIsoApply f where
     (*/)  :: f () -> f b -> f b
     f */ g = unit . swapped /$/ f /*/ g
 
-    {-# MINIMAL sipure, (/*/) #-}
+    {-# MINIMAL (siunit | sipure), (/*/) #-}
 
 -- | Equivalent of 'Alternative' for 'SemiIsoFunctor'.
 --
@@ -89,6 +97,21 @@ class SemiIsoApply f => SemiIsoAlternative f where
     simany v = sisome v /|/ sipure _Empty
 
     {-# MINIMAL siempty, (/|/) #-}
+
+class SemiIsoApply m => SemiIsoMonad m where
+    (//=) :: m a -> (a -> m b) -> m (a, b)
+    m //= f = swapped /$/ (f =// m)
+
+    (=//) :: (b -> m a) -> m b -> m (a, b)
+    f =// m = swapped /$/ (m //= f)
+
+class SemiIsoMonad m => SemiIsoFix m where
+    sifix :: (a -> m a) -> m a
+    sifix f = dup /$/ (f =//= f)
+      where dup = semiIso (\a -> Right (a, a)) (Right . fst)
+
+    (=//=) :: (a -> m b) -> (b -> m a) -> m (a, b)
+    f =//= g = sifix (\(a, b) -> g b /*/ f a)
 
 -- | Equivalent of 'sequence'.
 --

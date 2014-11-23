@@ -66,7 +66,6 @@ module Control.Lens.SemiIso (
 
     -- * Semi-isos for numbers.
     _Negative,
-    _Positive,
 
     -- * Transforming semi-isos.
     rev,
@@ -194,11 +193,16 @@ bifiltered p = semiIso check check
   where check x | p x       = Right x
                 | otherwise = Left "bifiltered: predicate failed"
 
-_Negative :: Num a => SemiIso' a a
-_Negative = undefined
-
-_Positive :: Num a => SemiIso' a a
-_Positive = undefined
+-- | \-> Matches only negative numbers, turns it into a positive one.
+--
+-- \<- Matches only positive numbers, turns it into a negative one.
+_Negative :: Real a => SemiIso' a a
+_Negative = semiIso f g
+  where
+    f x | x < 0 = Right (-x)
+        | otherwise = Left "_Negative: apply expected a negative number"
+    g x | x >= 0 = Right (-x)
+        | otherwise = Left "_Negative: unapply expected a positive number"
 
 -- | Reverses a 'SemiIso'.
 rev :: ASemiIso s t a b -> SemiIso b a t s

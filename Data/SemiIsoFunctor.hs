@@ -117,6 +117,10 @@ class SemiIsoFunctor f => SemiIsoApply f where
 
     {-# MINIMAL (siunit | sipure), (/*/) #-}
 
+-- | Fails with a message.
+sifail :: SemiIsoApply f => String -> f a
+sifail msg = alwaysFailing msg /$/ siunit
+
 -- | Equivalent of 'Alternative' for 'SemiIsoFunctor'.
 --
 -- @f a@ should form a monoid with identity 'siempty' and binary

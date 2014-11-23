@@ -63,6 +63,7 @@ module Control.Lens.SemiIso (
     constant,
     exact,
     bifiltered,
+    alwaysFailing,
 
     -- * Semi-isos for numbers.
     _Negative,
@@ -192,6 +193,10 @@ bifiltered :: (a -> Bool) -> SemiIso' a a
 bifiltered p = semiIso check check
   where check x | p x       = Right x
                 | otherwise = Left "bifiltered: predicate failed"
+
+-- | A semi-iso that fails in both directions.
+alwaysFailing :: String -> SemiIso s t a b
+alwaysFailing msg = semiIso (\_ -> Left msg) (\_ -> Left msg)
 
 -- | \-> Matches only negative numbers, turns it into a positive one.
 --

@@ -79,19 +79,16 @@ module Control.Lens.SemiIso (
     attemptAp_,
     attemptUn_,
 
-    -- * Folds.
-    foldlM1,
-    foldrM1,
-    unfoldlM,
-    unfoldlM1,
-    unfoldrM,
-    unfoldrM1,
-
     -- * Bidirectional folds.
     bifoldr,
     bifoldr1,
     bifoldl,
-    bifoldl1
+    bifoldl1,
+
+    bifoldr_,
+    bifoldr1_,
+    bifoldl_,
+    bifoldl1_
     ) where
 
 import Control.Arrow
@@ -302,11 +299,45 @@ unfoldlM1 f a0 = go a0 []
 
 -- | Constructs a bidirectional fold.
 --
+-- \-> Right unfolds using the (->) part of the given semi-iso, until it fails.
+--
+-- \<- Right folds using the (<-) part of the given semi-iso.
+bifoldr :: ASemiIso' a (b, a) -> SemiIso' a (a, [b])
+bifoldr = bifoldr_ . attemptAp_
+
+-- | Constructs a bidirectional fold.
+--
+-- \-> Right unfolds using the (->) part of the given semi-iso, until it fails. 
+-- It should produce a non-empty list.
+--
+-- \<- Right folds a non-empty list using the (<-) part of the given semi-iso.
+bifoldr1 :: ASemiIso' a (a, a) -> SemiIso' a [a]
+bifoldr1 = bifoldr1_ . attemptAp_
+
+-- | Constructs a bidirectional fold.
+--
+-- \-> Left unfolds using the (->) part of the given semi-iso, until it fails.
+--
+-- \<- Left folds using the (<-) part of the given semi-iso.
+bifoldl :: ASemiIso' a (a, b) -> SemiIso' a (a, [b])
+bifoldl = bifoldl_ . attemptAp_
+
+-- | Constructs a bidirectional fold.
+--
+-- \-> Left unfolds using the (->) part of the given semi-iso, until it fails. 
+-- It should produce a non-empty list.
+--
+-- \<- Left folds a non-empty list using the (<-) part of the given semi-iso.
+bifoldl1 :: ASemiIso' a (a, a) -> SemiIso' a [a]
+bifoldl1 = bifoldl1_ . attemptAp_
+
+-- | Constructs a bidirectional fold.
+--
 -- \-> Right unfolds using the (->) part of the given semi-iso.
 --
 -- \<- Right folds using the (<-) part of the given semi-iso.
-bifoldr :: ASemiIso a a (Maybe (b, a)) (b, a) -> SemiIso' a (a, [b])
-bifoldr ai = semiIso (uf ai) (f ai)
+bifoldr_ :: ASemiIso a a (Maybe (b, a)) (b, a) -> SemiIso' a (a, [b])
+bifoldr_ ai = semiIso (uf ai) (f ai)
   where
     f = uncurry . foldrM . curry . unapply
     uf = unfoldrM . apply
@@ -314,11 +345,11 @@ bifoldr ai = semiIso (uf ai) (f ai)
 -- | Constructs a bidirectional fold.
 --
 -- \-> Right unfolds using the (->) part of the given semi-iso. It should
--- produce an non-empty list.
+-- produce a non-empty list.
 --
 -- \<- Right folds a non-empty list using the (<-) part of the given semi-iso.
-bifoldr1 :: ASemiIso a a (Maybe (a, a)) (a, a) -> SemiIso' a [a]
-bifoldr1 ai = semiIso (uf ai) (f ai)
+bifoldr1_ :: ASemiIso a a (Maybe (a, a)) (a, a) -> SemiIso' a [a]
+bifoldr1_ ai = semiIso (uf ai) (f ai)
   where
     f = foldrM1 . curry . unapply
     uf = unfoldrM1 . apply
@@ -328,8 +359,8 @@ bifoldr1 ai = semiIso (uf ai) (f ai)
 -- \-> Left unfolds using the (->) part of the given semi-iso.
 --
 -- \<- Left folds using the (<-) part of the given semi-iso.
-bifoldl :: ASemiIso a a (Maybe (a, b)) (a, b) -> SemiIso' a (a, [b])
-bifoldl ai = semiIso (uf ai) (f ai)
+bifoldl_ :: ASemiIso a a (Maybe (a, b)) (a, b) -> SemiIso' a (a, [b])
+bifoldl_ ai = semiIso (uf ai) (f ai)
   where
     f = uncurry . foldlM . curry . unapply
     uf = unfoldlM . apply
@@ -337,11 +368,11 @@ bifoldl ai = semiIso (uf ai) (f ai)
 -- | Constructs a bidirectional fold.
 --
 -- \-> Left unfolds using the (->) part of the given semi-iso. It should
--- produce an non-empty list.
+-- produce a non-empty list.
 --
 -- \<- Left folds a non-empty list using the (<-) part of the given semi-iso.
-bifoldl1 :: ASemiIso a a (Maybe (a, a)) (a, a) -> SemiIso' a [a]
-bifoldl1 ai = semiIso (uf ai) (f ai)
+bifoldl1_ :: ASemiIso a a (Maybe (a, a)) (a, a) -> SemiIso' a [a]
+bifoldl1_ ai = semiIso (uf ai) (f ai)
   where
     f = foldlM1 . curry . unapply
     uf = unfoldlM1 . apply

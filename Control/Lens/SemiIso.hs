@@ -62,6 +62,7 @@ module Control.Lens.SemiIso (
     morphed,
     constant,
     exact,
+    bifiltered,
 
     -- * Semi-isos for numbers.
     _Negative,
@@ -186,6 +187,12 @@ exact x = semiIso f g
     f _ = Right x
     g y | x == y    = Right ()
         | otherwise = Left "exact: not equal"
+
+-- | Like 'filtered' but checks the predicate in both ways.
+bifiltered :: (a -> Bool) -> SemiIso' a a
+bifiltered p = semiIso check check
+  where check x | p x       = Right x
+                | otherwise = Left "bifiltered: predicate failed"
 
 _Negative :: Num a => SemiIso' a a
 _Negative = undefined

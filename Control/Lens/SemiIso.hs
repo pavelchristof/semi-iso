@@ -297,7 +297,7 @@ unfoldlM1 f a0 = go a0 []
           Just (new_a, b) -> go new_a (b : bs)
           Nothing -> return (a : bs)
 
--- | Constructs a bidirectional fold.
+-- | Constructs a bidirectional fold. Works with prisms.
 --
 -- \-> Right unfolds using the (->) part of the given semi-iso, until it fails.
 --
@@ -305,7 +305,7 @@ unfoldlM1 f a0 = go a0 []
 bifoldr :: ASemiIso' a (b, a) -> SemiIso' a (a, [b])
 bifoldr = bifoldr_ . attemptAp_
 
--- | Constructs a bidirectional fold.
+-- | Constructs a bidirectional fold. Works with prisms.
 --
 -- \-> Right unfolds using the (->) part of the given semi-iso, until it fails. 
 -- It should produce a non-empty list.
@@ -314,7 +314,7 @@ bifoldr = bifoldr_ . attemptAp_
 bifoldr1 :: ASemiIso' a (a, a) -> SemiIso' a [a]
 bifoldr1 = bifoldr1_ . attemptAp_
 
--- | Constructs a bidirectional fold.
+-- | Constructs a bidirectional fold. Works with prisms.
 --
 -- \-> Left unfolds using the (->) part of the given semi-iso, until it fails.
 --
@@ -322,7 +322,7 @@ bifoldr1 = bifoldr1_ . attemptAp_
 bifoldl :: ASemiIso' a (a, b) -> SemiIso' a (a, [b])
 bifoldl = bifoldl_ . attemptAp_
 
--- | Constructs a bidirectional fold.
+-- | Constructs a bidirectional fold. Works with prisms.
 --
 -- \-> Left unfolds using the (->) part of the given semi-iso, until it fails. 
 -- It should produce a non-empty list.

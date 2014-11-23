@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE PatternSynonyms #-}
 {- |
 Module      :  Data.SemiIsoFunctor
 Description :  Functors from the category of semi-isomoprihsms to Hask.
@@ -18,10 +20,13 @@ module Data.SemiIsoFunctor where
 
 import Control.Lens.Cons
 import Control.Lens.Empty
+import Control.Lens.Internal.SemiIso
 import Control.Lens.SemiIso
+import Data.Functor.Identity
+import Data.Tuple.Morph
 
 infixl 3 /|/
-infixl 4 /$/
+infixl 4 /$/, ~$/, /$~, ~$~
 infixl 5 /*/, /*, */
 infixl 1 //=
 infixr 1 =//
@@ -53,6 +58,30 @@ class SemiIsoFunctor f where
 -- | A infix operator for 'simap'.
 (/$/) :: SemiIsoFunctor f => ASemiIso' a b -> f b -> f a
 (/$/) = simap
+
+-- | @ai /$~ f@ is equal to @ai . morphed /$/ f@.
+--
+-- This operator handles all the hairy stuff with uncurried application:
+-- it reassociates the argument tuple and removes unnecessary (or adds necessary)
+-- units to match the function type. You don't have to use /* and */ with this
+-- operator.
+(/$~) :: (SemiIsoFunctor f, HFoldable b', HFoldable b,
+          HUnfoldable b', HUnfoldable b, Rep b' ~ Rep b)
+      => ASemiIso' a b' -> f b -> f a
+(SemiIso f g) /$~ h = semiIso f g . morphed /$/ h
+
+-- | @ai ~$/ f@ is equal to @morphed . ai /$/ f@.
+(~$/) :: (SemiIsoFunctor f, HFoldable a', HFoldable a,
+          HUnfoldable a', HUnfoldable a, Rep a' ~ Rep a)
+      => ASemiIso' a' b -> f b -> f a
+(SemiIso f g) ~$/ h = morphed . semiIso f g /$/ h
+
+-- | @ai ~$~ f@ is equal to @morphed . ai . morphed /$/ f@.
+(~$~) :: (SemiIsoFunctor f, HFoldable b', HFoldable b', HFoldable b,
+          HFoldable a, HUnfoldable b', HUnfoldable b', HUnfoldable b,
+          HUnfoldable a, Rep b' ~ Rep b, Rep b' ~ Rep a)
+      => ASemiIso b' b' b' b' -> f b -> f a
+(SemiIso f g) ~$~ h = morphed . semiIso f g . morphed /$/ h
 
 -- | Equivalent of 'Applicative' for 'SemiIsoFunctor'.
 --

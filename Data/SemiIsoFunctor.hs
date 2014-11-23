@@ -57,29 +57,37 @@ class SemiIsoFunctor f where
 (/$/) :: SemiIsoFunctor f => ASemiIso' a b -> f b -> f a
 (/$/) = simap
 
--- | @ai /$~ f@ is equal to @ai . morphed /$/ f@.
+-- | > ai /$~ f = ai . morphed /$/ f
 --
 -- This operator handles all the hairy stuff with uncurried application:
 -- it reassociates the argument tuple and removes unnecessary (or adds necessary)
--- units to match the function type. You don't have to use /* and */ with this
+-- units to match the function type. You don't have to use @/*@ and @*/@ with this
 -- operator.
 (/$~) :: (SemiIsoFunctor f, HFoldable b', HFoldable b,
           HUnfoldable b', HUnfoldable b, Rep b' ~ Rep b)
       => ASemiIso' a b' -> f b -> f a
-(SemiIso f g) /$~ h = semiIso f g . morphed /$/ h
+-- TODO GHC 7.10: haddock doesn't work with pattern synynonyms yet
+-- (SemiIso f g) /$~ h = semiIso f g . morphed /$/ h
+ai /$~ h = withSemiIso ai $ \f g -> semiIso f g . morphed /$/ h
 
--- | @ai ~$/ f@ is equal to @morphed . ai /$/ f@.
+-- | > ai ~$/ f = morphed . ai /$/ f
 (~$/) :: (SemiIsoFunctor f, HFoldable a', HFoldable a,
           HUnfoldable a', HUnfoldable a, Rep a' ~ Rep a)
       => ASemiIso' a' b -> f b -> f a
-(SemiIso f g) ~$/ h = morphed . semiIso f g /$/ h
+-- TODO GHC 7.10: haddock doesn't work with pattern synynonyms yet
+--(SemiIso f g) ~$/ h = morphed . semiIso f g /$/ h
+ai ~$/ h = withSemiIso ai $ \f g -> morphed . semiIso f g /$/ h
 
--- | @ai ~$~ f@ is equal to @morphed . ai . morphed /$/ f@.
-(~$~) :: (SemiIsoFunctor f, HFoldable b', HFoldable b', HFoldable b,
-          HFoldable a, HUnfoldable b', HUnfoldable b', HUnfoldable b,
-          HUnfoldable a, Rep b' ~ Rep b, Rep b' ~ Rep a)
+-- | > ai ~$~ f = morphed . ai . morphed /$/ f
+(~$~) :: (SemiIsoFunctor f,
+          HFoldable a, HUnfoldable a,
+          HFoldable b, HUnfoldable b,
+          HFoldable b', HUnfoldable b',
+          Rep b' ~ Rep b, Rep b' ~ Rep a)
       => ASemiIso b' b' b' b' -> f b -> f a
-(SemiIso f g) ~$~ h = morphed . semiIso f g . morphed /$/ h
+-- TODO GHC 7.10: haddock doesn't work with pattern synynonyms yet
+--(SemiIso f g) ~$~ h = morphed . semiIso f g . morphed /$/ h
+ai ~$~ h = withSemiIso ai $ \f g -> morphed . semiIso f g . morphed /$/ h
 
 -- | Equivalent of 'Applicative' for 'SemiIsoFunctor'.
 --

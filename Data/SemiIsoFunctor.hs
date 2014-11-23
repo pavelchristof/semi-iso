@@ -20,9 +20,7 @@ module Data.SemiIsoFunctor where
 
 import Control.Lens.Cons
 import Control.Lens.Empty
-import Control.Lens.Internal.SemiIso
 import Control.Lens.SemiIso
-import Data.Functor.Identity
 import Data.Tuple.Morph
 
 infixl 3 /|/

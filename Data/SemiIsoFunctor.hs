@@ -125,6 +125,10 @@ class SemiIsoApply f => SemiIsoAlternative f where
 
     {-# MINIMAL siempty, (/|/) #-}
 
+-- | An analogue of 'Monad' for 'SemiIsoFunctor'.
+--
+-- Because of the 'no throwing away' rule bind has to \"return\"
+-- both @a@ and @b@.
 class SemiIsoApply m => SemiIsoMonad m where
     (//=) :: m a -> (a -> m b) -> m (a, b)
     m //= f = swapped /$/ (f =// m)
@@ -132,13 +136,19 @@ class SemiIsoApply m => SemiIsoMonad m where
     (=//) :: (b -> m a) -> m b -> m (a, b)
     f =// m = swapped /$/ (m //= f)
 
+    {-# MINIMAL (//=) | (=//) #-}
+
+-- | A SemiIsoMonad with fixed point operator.
 class SemiIsoMonad m => SemiIsoFix m where
     sifix :: (a -> m a) -> m a
     sifix f = dup /$/ (f =//= f)
       where dup = semiIso (\a -> Right (a, a)) (Right . fst)
 
+    -- | Fixed point combined with bind, it's so symmetric!
     (=//=) :: (a -> m b) -> (b -> m a) -> m (a, b)
     f =//= g = sifix (\(a, b) -> g b /*/ f a)
+
+    {-# MINIMAL sifix | (=//=) #-}
 
 -- | Equivalent of 'sequence'.
 --

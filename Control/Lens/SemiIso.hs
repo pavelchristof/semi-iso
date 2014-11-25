@@ -48,6 +48,7 @@ module Control.Lens.SemiIso (
 
     -- * Constructing semi-isos.
     semiIso,
+    cloneSemiIso,
 
     -- * Consuming semi-isos.
     apply,
@@ -130,6 +131,10 @@ pattern SemiIso sa bt <- (viewSemiIso -> (sa, bt))
 -- fail with an error message.
 semiIso :: (s -> Either String a) -> (b -> Either String t) -> SemiIso s t a b
 semiIso sa bt = merge . dimap sa (sequenceA . fmap bt) . expose
+
+-- | Clones a semi-iso.
+cloneSemiIso :: ASemiIso s t a b -> SemiIso s t a b
+cloneSemiIso (SemiIso sa bt) = semiIso sa bt
 
 -- | Applies the 'SemiIso'.
 apply :: ASemiIso s t a b -> s -> Either String a

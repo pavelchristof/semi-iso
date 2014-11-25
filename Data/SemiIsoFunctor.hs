@@ -23,7 +23,7 @@ import Control.Lens.Empty
 import Control.Lens.SemiIso
 import Data.Tuple.Morph
 
-infixl 3 /|/
+infixl 3 /|/, /?/
 infixl 4 /$/, ~$/, /$~, ~$~
 infixl 5 /*/, /*, */
 infixl 1 //=
@@ -66,17 +66,13 @@ class SemiIsoFunctor f where
 (/$~) :: (SemiIsoFunctor f, HFoldable b', HFoldable b,
           HUnfoldable b', HUnfoldable b, Rep b' ~ Rep b)
       => ASemiIso' a b' -> f b -> f a
--- TODO GHC 7.10: haddock doesn't work with pattern synynonyms yet
--- (SemiIso f g) /$~ h = semiIso f g . morphed /$/ h
-ai /$~ h = withSemiIso ai $ \f g -> semiIso f g . morphed /$/ h
+ai /$~ h = cloneSemiIso ai . morphed /$/ h
 
 -- | > ai ~$/ f = morphed . ai /$/ f
 (~$/) :: (SemiIsoFunctor f, HFoldable a', HFoldable a,
           HUnfoldable a', HUnfoldable a, Rep a' ~ Rep a)
       => ASemiIso' a' b -> f b -> f a
--- TODO GHC 7.10: haddock doesn't work with pattern synynonyms yet
---(SemiIso f g) ~$/ h = morphed . semiIso f g /$/ h
-ai ~$/ h = withSemiIso ai $ \f g -> morphed . semiIso f g /$/ h
+ai ~$/ h = morphed . cloneSemiIso ai /$/ h
 
 -- | > ai ~$~ f = morphed . ai . morphed /$/ f
 (~$~) :: (SemiIsoFunctor f,
@@ -85,9 +81,7 @@ ai ~$/ h = withSemiIso ai $ \f g -> morphed . semiIso f g /$/ h
           HFoldable b', HUnfoldable b',
           Rep b' ~ Rep b, Rep b' ~ Rep a)
       => ASemiIso b' b' b' b' -> f b -> f a
--- TODO GHC 7.10: haddock doesn't work with pattern synynonyms yet
---(SemiIso f g) ~$~ h = morphed . semiIso f g . morphed /$/ h
-ai ~$~ h = withSemiIso ai $ \f g -> morphed . semiIso f g . morphed /$/ h
+ai ~$~ h = morphed . cloneSemiIso ai . morphed /$/ h
 
 -- | Equivalent of 'Applicative' for 'SemiIsoFunctor'.
 --
@@ -136,6 +130,10 @@ class SemiIsoApply f => SemiIsoAlternative f where
     simany v = sisome v /|/ sipure _Empty
 
     {-# MINIMAL siempty, (/|/) #-}
+
+-- | Provides an error message in the case of failure.
+(/?/) :: SemiIsoAlternative f => f a -> String -> f a
+f /?/ msg = f /|/ sifail msg
 
 -- | An analogue of 'Monad' for 'SemiIsoFunctor'.
 --

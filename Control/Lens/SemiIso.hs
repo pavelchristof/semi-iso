@@ -220,15 +220,15 @@ morphed = iso morph morph
 constant :: a -> SemiIso' () a
 constant x = semiIso (\_ -> Right x) (\_ -> Right ())
 
--- | \-> Always returns the argument.
+-- | \-> Filters out all values not equal to the argument.
 --
--- \<- Filters out all values not equal to the argument.
-exact :: Eq a => a -> SemiIso' () a
+-- \<- Always returns the argument.
+exact :: Eq a => a -> SemiIso' a ()
 exact x = semiIso f g
   where
-    f _ = Right x
-    g y | x == y    = Right ()
+    f y | x == y    = Right ()
         | otherwise = Left "exact: not equal"
+    g _ = Right x
 
 -- | Like 'filtered' but checks the predicate in both ways.
 bifiltered :: (a -> Bool) -> SemiIso' a a

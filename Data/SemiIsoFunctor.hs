@@ -161,13 +161,19 @@ class SemiIsoMonad m => SemiIsoFix m where
     {-# MINIMAL sifix | (=//=) #-}
 
 -- | Equivalent of 'sequence'.
---
--- Note that it is not possible to write sequence_, because
--- you cannot void a SemiIsoFunctor.
 sisequence :: SemiIsoApply f => [f a] -> f [a]
 sisequence [] = sipure _Empty
 sisequence (x:xs) = _Cons /$/ x /*/ sisequence xs
 
+-- | Equivalent of 'sequence_', restricted to units.
+sisequence_ :: SemiIsoApply f => [f ()] -> f ()
+sisequence_ [] = sipure _Empty
+sisequence_ (x:xs) = unit /$/ x /*/ sisequence_ xs
+
 -- | Equivalent of 'replicateM'.
 sireplicate :: SemiIsoApply f => Int -> f a -> f [a]
 sireplicate n f = sisequence (replicate n f)
+
+-- | Equivalent of 'replicateM_', restricted to units.
+sireplicate_ :: SemiIsoApply f => Int -> f () -> f ()
+sireplicate_ n f = sisequence_ (replicate n f)

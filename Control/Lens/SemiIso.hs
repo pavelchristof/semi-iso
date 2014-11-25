@@ -50,6 +50,10 @@ module Control.Lens.SemiIso (
     semiIso,
     cloneSemiIso,
 
+    -- * Reified semi-isos.
+    ReifiedSemiIso'(..),
+    reifySemiIso,
+
     -- * Consuming semi-isos.
     apply,
     unapply,
@@ -71,7 +75,6 @@ module Control.Lens.SemiIso (
 
     -- * Transforming semi-isos.
     rev,
-    prod,
     elimFirst,
     elimSecond,
     attempt,
@@ -93,7 +96,9 @@ module Control.Lens.SemiIso (
     bifoldl1_
     ) where
 
+import Prelude hiding (id, (.))
 import Control.Arrow
+import Control.Category
 import Control.Lens.Internal.SemiIso
 import Control.Lens.Iso
 import Data.Foldable
@@ -127,6 +132,34 @@ type ASemiIso' s a = ASemiIso s s a a
 -- 'viewSemiIso' or 'fromSemiIso'.
 pattern SemiIso sa bt <- (viewSemiIso -> (sa, bt))
 
+-- | A semi-iso stored in a container.
+newtype ReifiedSemiIso' s a = ReifiedSemiIso' { runSemiIso :: SemiIso' s a }
+
+instance Category ReifiedSemiIso' where
+    id = ReifiedSemiIso' id
+    ReifiedSemiIso' f . ReifiedSemiIso' g = ReifiedSemiIso' (g . f)
+
+-- | This in an __/incomplete/__ instance, 'arr' and '(&&&)' are undefined.
+instance Arrow ReifiedSemiIso' where
+    arr = undefined
+    (&&&) = undefined
+
+    -- TODO: pattern synonyms dont work here for some reason
+    first (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
+        ReifiedSemiIso' $ cloneSemiIso $
+            semiIso (runKleisli $ first $ Kleisli f)
+                    (runKleisli $ first $ Kleisli g)
+
+    second (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
+        ReifiedSemiIso' $ cloneSemiIso $
+            semiIso (runKleisli $ second $ Kleisli f)
+                    (runKleisli $ second $ Kleisli g)
+
+    ReifiedSemiIso' ai *** ReifiedSemiIso' ai' = ReifiedSemiIso' $
+        withSemiIso ai $ \f g -> withSemiIso ai' $ \f' g' ->
+            semiIso (runKleisli $ Kleisli f *** Kleisli f')
+                    (runKleisli $ Kleisli g *** Kleisli g')
+
 -- | Constructs a semi isomorphism from a pair of functions that can
 -- fail with an error message.
 semiIso :: (s -> Either String a) -> (b -> Either String t) -> SemiIso s t a b
@@ -154,6 +187,10 @@ withSemiIso ai k = case ai (Retail Right (Right . Identity)) of
 -- | Extracts the two functions that characterize the 'SemiIso'.
 viewSemiIso :: ASemiIso s t a b -> (s -> Either String a, b -> Either String t)
 viewSemiIso ai = withSemiIso ai (,)
+
+-- | Reifies a semi-iso.
+reifySemiIso :: ASemiIso' s a -> ReifiedSemiIso' s a
+reifySemiIso ai = ReifiedSemiIso' $ cloneSemiIso ai
 
 -- | A trivial isomorphism between a and (a, ()).
 unit :: Iso' a (a, ())
@@ -218,22 +255,15 @@ _Negative = semiIso f g
 rev :: ASemiIso s t a b -> SemiIso b a t s
 rev ai = withSemiIso ai $ \l r -> semiIso r l
 
--- | A product of SemiIso's.
-prod :: ASemiIso s t a b -> ASemiIso s' t' a' b' 
-     -> SemiIso (s, s') (t, t') (a, a') (b, b')
-prod (SemiIso sa bt) (SemiIso sa' bt') = semiIso
-    (runKleisli (Kleisli sa *** Kleisli sa')) 
-    (runKleisli (Kleisli bt *** Kleisli bt'))
-
--- | In the non-polymorphic case uses an @SemiIso a ()@ to construct a
--- @SemiIso (a, b) b@, i.e. eliminates the first pair element.
-elimFirst :: ASemiIso s' t' () () -> SemiIso (s', t) (t', t) t t
+-- | Uses an @SemiIso' a ()@ to construct a @SemiIso' (a, b) b@,
+-- i.e. eliminates the first pair element.
+elimFirst :: ASemiIso' s () -> SemiIso' (s, t) t
 elimFirst ai = swapped . elimSecond ai
 
--- | In the non-polymorphic case uses an @SemiIso b ()@ to construct a
--- @SemiIso (a, b) a@, i.e. eliminates the second pair element.
-elimSecond :: ASemiIso s' t' () () -> SemiIso (t, s') (t, t') t t
-elimSecond ai = prod id ai . rev unit
+-- | Uses an @SemiIso b ()@ to construct a @SemiIso (a, b) a@,
+-- i.e. eliminates the second pair element.
+elimSecond :: ASemiIso' s () -> SemiIso' (t, s) t
+elimSecond ai = runSemiIso (id *** reifySemiIso ai) . rev unit
 
 -- | Transforms the semi-iso so that applying it in both directions never fails,
 -- but instead catches any errors and returns them as an @Either String a@.

@@ -75,6 +75,7 @@ module Control.Lens.SemiIso (
 
     -- * Transforming semi-isos.
     rev,
+    prod,
     elimFirst,
     elimSecond,
     attempt,
@@ -254,6 +255,10 @@ _Negative = semiIso f g
 -- | Reverses a 'SemiIso'.
 rev :: ASemiIso s t a b -> SemiIso b a t s
 rev ai = withSemiIso ai $ \l r -> semiIso r l
+
+-- | A product of semi-isos.
+prod :: ASemiIso' s a -> ASemiIso' t b -> SemiIso' (s, t) (a, b)
+prod a b = runSemiIso (reifySemiIso a *** reifySemiIso b)
 
 -- | Uses an @SemiIso' a ()@ to construct a @SemiIso' (a, b) b@,
 -- i.e. eliminates the first pair element.

@@ -17,10 +17,10 @@ import Data.Profunctor
 -- 
 -- Should obey laws:
 -- 
--- > merge . rmap return = id
--- > lmap return . expose = id
--- > rmap (>>= f) = merge . rmap (fmap f)
--- > lmap (fmap f) . expose = expose . lmap f
+-- prop> merge . rmap return = id
+-- prop> lmap return . expose = id
+-- prop> rmap (>>= f) = merge . rmap (fmap f)
+-- prop> lmap (fmap f) . expose = expose . lmap f
 class (Monad m, Profunctor p) => Exposed m p | p -> m where
     expose :: p a b -> p (m a) b
     merge  :: p a (m b) -> p a b 

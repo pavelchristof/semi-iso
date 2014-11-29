@@ -29,19 +29,28 @@ infixl 5 /*/, /*, */
 infixl 1 //=
 infixr 1 =//
 
--- | A functor from the category of semi-isomorphisms to Hask.
---
--- It is both covariant and contravariant in its single arugment.
+-- | A functor from the category of semi-isomorphisms to Hask. We can think of it as
+-- if it was both covariant and contravariant in its single argument.
 --
 -- The contravariant map is used by default to provide compatibility with 
 -- Prisms (otherwise you would have to reverse them in most cases).
 --
+-- This is really a pair of functors @F : SemiIso -> Hask@,
+-- @G : SemiIso^op -> Hask@ satisfying:
+--
+-- > F(X) = G(X)
+-- > F(f) = G(f^-1)
+--
 -- Instances should satisfy laws:
 -- 
--- > simap id      = id
--- > simap (f . g) = simap g . simap f
--- > simap         = simapCo . fromSemi
--- > simapCo       = simap   . fromSemi
+-- [/functoriality/]
+--
+-- prop> simap id = id
+-- prop> simap (f . g) = simap g . simap f
+--
+-- [/inverse/]
+--
+-- prop> simap f = simapCo (rev f)
 class SemiIsoFunctor f where
     -- | The contravariant map.
     simap :: ASemiIso' a b -> f b -> f a
@@ -83,14 +92,31 @@ ai ~$/ h = morphed . cloneSemiIso ai /$/ h
       => ASemiIso b' b' b' b' -> f b -> f a
 ai ~$~ h = morphed . cloneSemiIso ai . morphed /$/ h
 
--- | Equivalent of 'Applicative' for 'SemiIsoFunctor'.
---
--- However, this class implements uncurried application, unlike 
--- 'Control.Applicative' which gives you curried application.
+-- | An applicative semi-iso functor, i. e. a lax monoidal functor from @SemiIso@
+-- to @Hask@.
 --
 -- Instances should satisfy laws:
 -- 
--- > TODO (they should be fine)
+-- [/homomorphism/]
+--
+-- prop> sipure f /*/ sipure g = sipure (f `prod` g)
+--
+-- [/associativity/]
+--
+-- prop> f /*/ (g /*/ h) = associated /$/ (f /*/ g) /*/ h
+--
+-- [/unitality/]
+--
+-- prop> siunit /*/ x = swapped . rev unit /$/ x
+-- prop> x /*/ siunit = rev unit /$/ x
+--
+-- Additionally it should be consistent with the default implementation:
+--
+-- prop> sipure ai = ai /$/ siunit
+-- prop> sipureCo ai = ai `simapCo` siunit
+--
+-- prop> f /* g = unit /$/ f /*/ g
+-- prop> f */ g = unit . swapped /$/ f /*/ g
 class SemiIsoFunctor f => SemiIsoApply f where
     siunit :: f ()
     siunit = sipure id

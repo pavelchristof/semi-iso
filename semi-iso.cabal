@@ -22,7 +22,6 @@ source-repository head
 library
   exposed-modules:     Control.Lens.SemiIso
                        Control.Lens.Internal.SemiIso
-                       Control.SemiIso.Trans
                        Data.SemiIsoFunctor
                        Data.Profunctor.Exposed
   build-depends:       base >= 4 && < 5, profunctors, transformers, lens, tuple-morph

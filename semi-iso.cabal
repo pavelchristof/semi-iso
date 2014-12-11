@@ -25,10 +25,10 @@ description:         Semi-isomorphisms are partial isomorphisms with weakened is
   dreaded @arr@).
 
   SIArrow abstracts categories of reversible computations (with reversible side effects). In
-  the case of parsing and pretty-printing using the "syntax" library if we have an arrow 
+  the case of parsing and pretty-printing using the "syntax" library if we have an arrow
   @SIArrow cat => cat a b@ then we can:
   .
-  * Evaluate it from left to right, turning a value of type @a@ into a value of type @b@, 
+  * Evaluate it from left to right, turning a value of type @a@ into a value of type @b@,
   with the side effect of consuming a sequence. (Parsing)
   .
   * Evaluate it from right to left, turning a value of type @b@ into a value of type @a@,

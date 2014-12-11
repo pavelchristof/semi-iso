@@ -28,12 +28,20 @@ infixl 3 /+/
 
 -- | A category with finite products.
 class Category cat => Products cat where
+    -- | Send the first component of the input through the argument arrow, and copy the rest unchanged to the output.
+    --
+    -- @first a@ is equal to @a *** id@.
     first :: cat a b -> cat (a, c) (b, c)
     first a = a *** id
 
+    -- | A mirror image of 'first'.
+    --
+    -- @second a@ is equal to @id *** a@.
     second :: cat a b -> cat (c, a) (c, b)
     second a = id *** a
 
+    -- | A product of two arrows.
+    -- Split the input between the two argument arrows and combine their output.
     (***) :: cat a b -> cat c d -> cat (a, c) (b, d)
     a *** b = first a >>> second b
 
@@ -44,12 +52,20 @@ instance Monad m => Products (Kleisli m) where
 
 -- | A category with finite coproducts.
 class Category cat => Coproducts cat where
+    -- | Feed marked inputs through the argument arrow, passing the rest through unchanged to the output.
+    --
+    -- @left a@ is equal to @a +++ id@.
     left :: cat a b -> cat (Either a c) (Either b c)
     left a = a +++ id
 
+    -- | A mirror image of left.
+    --
+    -- @right a@ is equal to @id +++ a@.
     right :: cat a b -> cat (Either c a) (Either c b)
     right a = id +++ a
 
+    -- | A coproduct of two arrows.
+    -- Split the input between the two argument arrows, retagging and merging their outputs.
     (+++) :: cat a b -> cat c d -> cat (Either a c) (Either b d)
     a +++ b = left a >>> right b
 
@@ -60,7 +76,9 @@ instance Monad m => Coproducts (Kleisli m) where
 
 -- | A category @cat@ is a CatPlus when @cat a b@ is a monoid for all a, b.
 class Category cat => CatPlus cat where
+    -- | The identity of '/+/'.
     cempty :: cat a b
+    -- | An associative operation on arrows.
     (/+/) :: cat a b -> cat a b -> cat a b
 
     {-# MINIMAL cempty, (/+/) #-}
@@ -71,6 +89,7 @@ instance MonadPlus m => CatPlus (Kleisli m) where
 
 -- | A category transformer.
 class CategoryTrans t where
+    -- | Lift an arrow from the base category.
     clift :: Category cat => cat a b -> t cat a b
 
     {-# MINIMAL clift #-}

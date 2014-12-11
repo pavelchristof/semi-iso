@@ -1,8 +1,9 @@
 name:                semi-iso
 version:             1.0.0.0
 synopsis:            Weakened partial isomorphisms, reversible computations.
-description:         Semi-isomorphisms are partial isomorphisms with weakened iso laws.
-  And they work with Iso and Prism from @lens@!
+description:         
+  Semi-isomorphisms are partial isomorphisms with weakened iso laws. They are a basic
+  building block of reversible computations. And they work with Iso and Prism from @lens@!
   .
   The module "Control.Lens.SemiIso" defines semi-isomorphisms and provides some
   basic semi-isos and combinators. A @SemiIso' a b@ can be applied in both directions

@@ -10,7 +10,24 @@ Maintainer  :  Paweł Nowak <pawel834@gmail.com>
 Stability   :  experimental
 
 -}
-module Control.SIArrow where
+module Control.SIArrow (
+    -- * Arrow.
+    SIArrow(..),
+    (^>>), (>>^), (^<<), (<<^),
+
+    -- * Functor and applicative.
+    (/$/), (/$~),
+    (/*/), (/*), (*/),
+
+    -- * Signaling errors.
+    sifail, (/?/),
+
+    -- * Combinators.
+    sisequence,
+    sisequence_,
+    sireplicate,
+    sireplicate_
+    ) where
 
 import           Control.Arrow (Kleisli(..))
 import           Control.Category
@@ -24,7 +41,7 @@ import           Prelude hiding (id, (.))
 
 infixr 1 ^>>, >>^
 infixr 1 ^<<, <<^
-infixl 4 /$/, /$~, ~$/, ~$~
+infixl 4 /$/, /$~
 infixl 5 /*/, */, /*
 
 -- Categories.
@@ -74,21 +91,6 @@ ai /$/ f = sipure ai . f
            HUnfoldable b', HUnfoldable b, Rep b' ~ Rep b)
        => ASemiIso' a b' -> cat c b -> cat c a
 ai /$~ h = cloneSemiIso ai . morphed /$/ h
-
--- | > ai ~$/ f = morphed . ai /$/ f
-(~$/) :: (SIArrow cat, HFoldable a', HFoldable a,
-          HUnfoldable a', HUnfoldable a, Rep a' ~ Rep a)
-      => ASemiIso' a' b -> cat c b -> cat c a
-ai ~$/ h = morphed . cloneSemiIso ai /$/ h
-
--- | > ai ~$~ f = morphed . ai . morphed /$/ f
-(~$~) :: (SIArrow cat,
-          HFoldable a, HUnfoldable a,
-          HFoldable b, HUnfoldable b,
-          HFoldable b', HUnfoldable b',
-          Rep b' ~ Rep b, Rep b' ~ Rep a)
-      => ASemiIso b' b' b' b' -> cat c b -> cat c a
-ai ~$~ h = morphed . cloneSemiIso ai . morphed /$/ h
 
 (/*/) :: SIArrow cat => cat () b -> cat () c -> cat () (b, c)
 a /*/ b = unit ^>> (a *** b)

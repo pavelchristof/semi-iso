@@ -44,6 +44,9 @@ class (Products cat, Coproducts cat, CatPlus cat) => SIArrow cat where
 instance MonadPlus m => SIArrow (Kleisli m) where
     siarr ai = Kleisli $ either fail return . apply ai
 
+instance SIArrow ReifiedSemiIso' where
+    siarr = reifySemiIso
+
 (^>>) :: SIArrow cat => ASemiIso' a b -> cat b c -> cat a c
 f ^>> a = a . siarr f
 

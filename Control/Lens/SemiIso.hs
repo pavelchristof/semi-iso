@@ -97,9 +97,9 @@ module Control.Lens.SemiIso (
     bifoldl1_
     ) where
 
-import Prelude hiding (id, (.))
-import Control.Arrow
+import Control.Arrow (Kleisli(..))
 import Control.Category
+import Control.Category.Structures
 import Control.Lens.Internal.SemiIso
 import Control.Lens.Iso
 import Data.Foldable
@@ -107,6 +107,7 @@ import Data.Functor.Identity
 import Data.Profunctor.Exposed
 import Data.Traversable
 import Data.Tuple.Morph
+import Prelude hiding (id, (.))
 
 -- | A semi-isomorphism is a partial isomorphism with weakened laws.
 -- 
@@ -140,11 +141,7 @@ instance Category ReifiedSemiIso' where
     id = ReifiedSemiIso' id
     ReifiedSemiIso' f . ReifiedSemiIso' g = ReifiedSemiIso' (g . f)
 
--- | This in an __/incomplete/__ instance, 'arr' and '(&&&)' are undefined.
-instance Arrow ReifiedSemiIso' where
-    arr = undefined
-    (&&&) = undefined
-
+instance Products ReifiedSemiIso' where
     -- TODO: pattern synonyms dont work here for some reason
     first (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
         ReifiedSemiIso' $ cloneSemiIso $
@@ -160,6 +157,30 @@ instance Arrow ReifiedSemiIso' where
         withSemiIso ai $ \f g -> withSemiIso ai' $ \f' g' ->
             semiIso (runKleisli $ Kleisli f *** Kleisli f')
                     (runKleisli $ Kleisli g *** Kleisli g')
+
+instance Coproducts ReifiedSemiIso' where
+    left (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
+        ReifiedSemiIso' $ cloneSemiIso $
+            semiIso (runKleisli $ left $ Kleisli f)
+                    (runKleisli $ left $ Kleisli g)
+
+    right (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
+        ReifiedSemiIso' $ cloneSemiIso $
+            semiIso (runKleisli $ right $ Kleisli f)
+                    (runKleisli $ right $ Kleisli g)
+
+    ReifiedSemiIso' ai +++ ReifiedSemiIso' ai' = ReifiedSemiIso' $
+        withSemiIso ai $ \f g -> withSemiIso ai' $ \f' g' ->
+            semiIso (runKleisli $ Kleisli f +++ Kleisli f')
+                    (runKleisli $ Kleisli g +++ Kleisli g')
+
+instance CatPlus ReifiedSemiIso' where
+    cempty = ReifiedSemiIso' $ alwaysFailing "cempty"
+
+    ReifiedSemiIso' ai /+/ ReifiedSemiIso' ai' = ReifiedSemiIso' $
+        withSemiIso ai $ \f g -> withSemiIso ai' $ \f' g' ->
+            semiIso (runKleisli $ Kleisli f /+/ Kleisli f')
+                    (runKleisli $ Kleisli g /+/ Kleisli g')
 
 -- | Constructs a semi isomorphism from a pair of functions that can
 -- fail with an error message.

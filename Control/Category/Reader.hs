@@ -16,6 +16,7 @@ module Control.Category.Reader (
     ) where
 
 import Control.Category
+import Control.Category.Structures
 import Control.SIArrow
 import Prelude hiding (id, (.))
 
@@ -34,7 +35,7 @@ instance Products cat => Products (ReaderCT env cat) where
 instance Coproducts cat => Coproducts (ReaderCT env cat) where
     ReaderCT f +++ ReaderCT g = ReaderCT $ \x -> f x +++ g x
 
-instance CategoryPlus cat => CategoryPlus (ReaderCT env cat) where
+instance CatPlus cat => CatPlus (ReaderCT env cat) where
     cempty = clift cempty
     ReaderCT f /+/ ReaderCT g = ReaderCT $ \x -> f x /+/ g x
 

@@ -88,7 +88,7 @@ instance MonadPlus m => CatPlus (Kleisli m) where
     (/+/)  = (BadArrow.<+>)
 
 -- | A category transformer.
-class CategoryTrans t where
+class CatTrans t where
     -- | Lift an arrow from the base category.
     clift :: Category cat => cat a b -> t cat a b
 

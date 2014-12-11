@@ -22,7 +22,7 @@ import Prelude hiding (id, (.))
 
 newtype ReaderCT env cat a b = ReaderCT { runReaderCT :: env -> cat a b }
 
-instance CategoryTrans (ReaderCT env) where
+instance CatTrans (ReaderCT env) where
     clift = ReaderCT . const
 
 instance Category cat => Category (ReaderCT env cat) where

@@ -1,5 +1,4 @@
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ConstraintKinds #-}
 {- |
 Module      :  Control.SIArrow
@@ -10,15 +9,12 @@ License     :  MIT
 Maintainer  :  Paweł Nowak <pawel834@gmail.com>
 Stability   :  experimental
 
-It can be instantiated by both covariant (like Parser) and contravariant 
-(like Printer) functors. Therefore it can be used as a common interface to unify
-parsing and pretty printing.
 -}
 module Control.SIArrow where
 
 import           Control.Arrow (Kleisli(..))
-import qualified Control.Arrow as BadArrow
 import           Control.Category
+import           Control.Category.Structures
 import           Control.Lens.Cons
 import           Control.Lens.Empty
 import           Control.Lens.SemiIso
@@ -26,9 +22,6 @@ import           Control.Monad
 import           Data.Tuple.Morph
 import           Prelude hiding (id, (.))
 
-infixr 3 ***
-infixr 2 +++
-infixl 3 /+/
 infixr 1 ^>>, >>^
 infixr 1 ^<<, <<^
 infixl 4 /$/, /$~, ~$/, ~$~
@@ -36,31 +29,7 @@ infixl 5 /*/, */, /*
 
 -- Categories.
 
-class Category cat => Products cat where
-    first :: cat a b -> cat (a, c) (b, c)
-    first a = a *** id
-
-    second :: cat a b -> cat (c, a) (c, b)
-    second a = id *** a
-
-    (***) :: cat a b -> cat c d -> cat (a, c) (b, d)
-    a *** b = first a >>> second b
-
-class Category cat => Coproducts cat where
-    left :: cat a b -> cat (Either a c) (Either b c)
-    left a = a +++ id
-
-    right :: cat a b -> cat (Either c a) (Either c b)
-    right a = id +++ a
-
-    (+++) :: cat a b -> cat c d -> cat (Either a c) (Either b d)
-    a +++ b = left a >>> right b
-
-class Category cat => CategoryPlus cat where
-    cempty :: cat a b
-    (/+/) :: cat a b -> cat a b -> cat a b
-
-class (Products cat, Coproducts cat, CategoryPlus cat) => SIArrow cat where
+class (Products cat, Coproducts cat, CatPlus cat) => SIArrow cat where
     siarr :: ASemiIso' a b -> cat a b
 
     sipure :: ASemiIso' b a -> cat a b
@@ -71,21 +40,6 @@ class (Products cat, Coproducts cat, CategoryPlus cat) => SIArrow cat where
 
     simany :: cat () b -> cat () [b]
     simany v = sisome v /+/ sipure _Empty
-
-class CategoryTrans t where
-    clift :: Category cat => cat a b -> t cat a b
-
--- Kleisli instances.
-
-instance Monad m => Products (Kleisli m) where
-    (***) = (BadArrow.***)
-
-instance Monad m => Coproducts (Kleisli m) where
-    (+++) = (BadArrow.+++)
-
-instance MonadPlus m => CategoryPlus (Kleisli m) where
-    cempty = BadArrow.zeroArrow
-    (/+/)  = (BadArrow.<+>)
 
 instance MonadPlus m => SIArrow (Kleisli m) where
     siarr ai = Kleisli $ either fail return . apply ai

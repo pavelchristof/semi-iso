@@ -32,6 +32,8 @@ class Category cat => Products cat where
     (***) :: cat a b -> cat c d -> cat (a, c) (b, d)
     a *** b = first a >>> second b
 
+    {-# MINIMAL (***) | first, second #-}
+
 instance Monad m => Products (Kleisli m) where
     (***) = (BadArrow.***)
 
@@ -45,6 +47,8 @@ class Category cat => Coproducts cat where
     (+++) :: cat a b -> cat c d -> cat (Either a c) (Either b d)
     a +++ b = left a >>> right b
 
+    {-# MINIMAL (+++) | left, right #-}
+
 instance Monad m => Coproducts (Kleisli m) where
     (+++) = (BadArrow.+++)
 
@@ -52,9 +56,13 @@ class Category cat => CatPlus cat where
     cempty :: cat a b
     (/+/) :: cat a b -> cat a b -> cat a b
 
+    {-# MINIMAL cempty, (/+/) #-}
+
 instance MonadPlus m => CatPlus (Kleisli m) where
     cempty = BadArrow.zeroArrow
     (/+/)  = (BadArrow.<+>)
 
 class CategoryTrans t where
     clift :: Category cat => cat a b -> t cat a b
+
+    {-# MINIMAL clift #-}

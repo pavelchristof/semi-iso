@@ -41,6 +41,8 @@ class (Products cat, Coproducts cat, CatPlus cat) => SIArrow cat where
     simany :: cat () b -> cat () [b]
     simany v = sisome v /+/ sipure _Empty
 
+    {-# MINIMAL siarr #-}
+
 instance MonadPlus m => SIArrow (Kleisli m) where
     siarr ai = Kleisli $ either fail return . apply ai
 

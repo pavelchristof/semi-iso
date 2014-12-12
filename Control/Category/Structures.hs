@@ -53,7 +53,7 @@ instance Monad m => Products (Kleisli m) where
     (***) = (BadArrow.***)
 
 instance Products cat => Products (Dual cat) where
-    Dual f *** Dual g = Dual $ f *** g
+    Dual f *** Dual g = Dual $ second g >>> first f
 
 instance Products (->) where
     (***) = (BadArrow.***)
@@ -83,7 +83,7 @@ instance Monad m => Coproducts (Kleisli m) where
     (+++) = (BadArrow.+++)
 
 instance Coproducts cat => Coproducts (Dual cat) where
-    Dual f +++ Dual g = Dual $ f +++ g
+    Dual f +++ Dual g = Dual $ right g >>> left f
 
 instance Coproducts (->) where
     (+++) = (BadArrow.+++)

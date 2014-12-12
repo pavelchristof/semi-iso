@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
 {- |
 Module      :  Control.Category.Structures
@@ -20,6 +21,7 @@ import           Control.Arrow (Kleisli(..))
 import qualified Control.Arrow as BadArrow
 import           Control.Category
 import           Control.Monad
+import           Data.Semigroupoid.Dual
 import           Prelude hiding (id, (.))
 
 infixl 3 ***
@@ -50,6 +52,9 @@ class Category cat => Products cat where
 instance Monad m => Products (Kleisli m) where
     (***) = (BadArrow.***)
 
+instance Products cat => Products (Dual cat) where
+    Dual f *** Dual g = Dual $ f *** g
+
 instance Products (->) where
     (***) = (BadArrow.***)
 
@@ -77,6 +82,9 @@ class Category cat => Coproducts cat where
 instance Monad m => Coproducts (Kleisli m) where
     (+++) = (BadArrow.+++)
 
+instance Coproducts cat => Coproducts (Dual cat) where
+    Dual f +++ Dual g = Dual $ f +++ g
+
 instance Coproducts (->) where
     (+++) = (BadArrow.+++)
 
@@ -92,6 +100,10 @@ class Category cat => CatPlus cat where
 instance MonadPlus m => CatPlus (Kleisli m) where
     cempty = BadArrow.zeroArrow
     (/+/)  = (BadArrow.<+>)
+
+instance CatPlus cat => CatPlus (Dual cat) where
+    cempty = Dual cempty
+    Dual f /+/ Dual g = Dual $ f /+/ g
 
 -- | A category transformer.
 class CatTrans t where

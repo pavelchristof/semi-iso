@@ -39,8 +39,10 @@ import Control.Category
 import Control.Category.Structures
 import Control.Lens.Cons
 import Control.Lens.Empty
+import Control.Lens.Iso
 import Control.Lens.SemiIso
 import Control.Monad
+import Data.Semigroupoid.Dual
 import Data.Tuple.Morph
 import Prelude hiding (id, (.))
 
@@ -93,6 +95,10 @@ class (Products cat, Coproducts cat, CatPlus cat) => SIArrow cat where
 instance MonadPlus m => SIArrow (Kleisli m) where
     siarr ai = Kleisli $ either fail return . apply ai
     sibind ai = Kleisli $ \a -> either fail (($ a) . runKleisli) $ apply ai a
+
+instance SIArrow cat => SIArrow (Dual cat) where
+    siarr = Dual . sipure
+    sibind ai = Dual $ sibind (iso id getDual . rev ai . iso getDual id)
 
 instance SIArrow ReifiedSemiIso' where
     siarr = reifySemiIso

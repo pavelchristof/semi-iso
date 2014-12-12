@@ -17,6 +17,8 @@ module Control.Category.Reader (
 
 import Control.Category
 import Control.Category.Structures
+import Control.Lens.Iso
+import Control.Lens.SemiIso
 import Control.SIArrow
 import Prelude hiding (id, (.))
 
@@ -41,3 +43,5 @@ instance CatPlus cat => CatPlus (ReaderCT env cat) where
 
 instance SIArrow cat => SIArrow (ReaderCT env cat) where
     siarr = clift . siarr
+    sibind ai = ReaderCT $ \env -> sibind
+        (iso id (flip runReaderCT env) . cloneSemiIso ai . iso (flip runReaderCT env) id)

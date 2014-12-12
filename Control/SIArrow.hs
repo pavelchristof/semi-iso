@@ -1,5 +1,8 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {- |
 Module      :  Control.SIArrow
 Description :  Categories of reversible computations.
@@ -15,6 +18,7 @@ module Control.SIArrow (
     -- * Arrow.
     SIArrow(..),
     (^>>), (>>^), (^<<), (<<^),
+    (#>>), (>>#), (#<<), (<<#),
 
     -- * Functor and applicative.
     (/$/), (/$~),
@@ -30,18 +34,18 @@ module Control.SIArrow (
     sireplicate_
     ) where
 
-import           Control.Arrow (Kleisli(..))
-import           Control.Category
-import           Control.Category.Structures
-import           Control.Lens.Cons
-import           Control.Lens.Empty
-import           Control.Lens.SemiIso
-import           Control.Monad
-import           Data.Tuple.Morph
-import           Prelude hiding (id, (.))
+import Control.Arrow (Kleisli(..))
+import Control.Category
+import Control.Category.Structures
+import Control.Lens.Cons
+import Control.Lens.Empty
+import Control.Lens.SemiIso
+import Control.Monad
+import Data.Tuple.Morph
+import Prelude hiding (id, (.))
 
-infixr 1 ^>>, >>^
-infixr 1 ^<<, <<^
+infixr 1 ^>>, ^<<, #>>, #<<
+infixr 1 >>^, <<^, >>#, <<#
 infixl 4 /$/, /$~
 infixl 5 /*/, */, /*
 infixl 3 /?/
@@ -59,12 +63,22 @@ class (Products cat, Coproducts cat, CatPlus cat) => SIArrow cat where
     -- in some sense minimal or \"pure\", similiar to 'pure', 'return' and
     -- 'arr' from "Control.Category".
     siarr :: ASemiIso' a b -> cat a b
+    siarr = sipure . rev
 
     -- | Reversed version of 'siarr'.
     --
     -- Use this where you would use 'pure'.
     sipure :: ASemiIso' b a -> cat a b
     sipure = siarr . rev
+
+    -- | Allows a computation to depend on a its input value.
+    --
+    -- I am not sure if this is the right way to get that ArrowApply or Monad
+    -- like power. It seems quite easy to break the parser/pretty-printer inverse
+    -- guarantee using this. On the other hand we have to be careful only when
+    -- constructing the SemiIso using 'iso'/'semiIso' - and with an invalid SemiIso
+    -- we could break everything anyway using 'siarr'.
+    sibind :: ASemiIso a (cat a b) (cat a b) b -> cat a b
 
     -- | @sisome v@ repeats @v@ as long as possible, but no less then once.
     sisome :: cat () b -> cat () [b]
@@ -74,13 +88,17 @@ class (Products cat, Coproducts cat, CatPlus cat) => SIArrow cat where
     simany :: cat () b -> cat () [b]
     simany v = sisome v /+/ sipure _Empty
 
-    {-# MINIMAL siarr #-}
+    {-# MINIMAL (siarr | sipure), sibind #-}
 
 instance MonadPlus m => SIArrow (Kleisli m) where
     siarr ai = Kleisli $ either fail return . apply ai
+    sibind ai = Kleisli $ \a -> either fail (($ a) . runKleisli) $ apply ai a
 
 instance SIArrow ReifiedSemiIso' where
     siarr = reifySemiIso
+    sibind ai = ReifiedSemiIso' $
+        semiIso (\a -> apply ai a >>= flip apply a . runSemiIso)
+                (\b -> unapply ai b >>= flip unapply b . runSemiIso)
 
 -- | Composes a SemiIso with an arrow.
 (^>>) :: SIArrow cat => ASemiIso' a b -> cat b c -> cat a c
@@ -98,9 +116,26 @@ f ^<< a = siarr f . a
 (<<^) :: SIArrow cat => cat b c -> ASemiIso' a b -> cat a c
 a <<^ f = a . siarr f
 
--- | Postcomposes an arrow with a reversed SemiIso. The analogue of '<$>'.
+-- | Composes a reversed SemiIso with an arrow.
+(#>>) :: SIArrow cat => ASemiIso' b a -> cat b c -> cat a c
+f #>> a = a . sipure f
+
+-- | Composes an arrow with a reversed SemiIso.
+(>>#) :: SIArrow cat => cat a b -> ASemiIso' c b -> cat a c
+a >># f = sipure f . a
+
+-- | Composes a reversed SemiIso with an arrow, backwards.
+(#<<) :: SIArrow cat => ASemiIso' c b -> cat a b -> cat a c
+f #<< a = sipure f . a
+
+-- | Composes an arrow with a reversed SemiIso, backwards.
+(<<#) :: SIArrow cat => cat b c -> ASemiIso' b a -> cat a c
+a <<# f = a . sipure f
+
+-- | Postcomposes an arrow with a reversed SemiIso.
+-- The analogue of '<$>' and synonym for '#<<'.
 (/$/) :: SIArrow cat => ASemiIso' b' b -> cat a b -> cat a b'
-ai /$/ f = sipure ai . f
+(/$/) = (#<<)
 
 -- | Convenient fmap.
 --

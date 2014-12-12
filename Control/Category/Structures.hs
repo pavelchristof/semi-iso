@@ -50,6 +50,9 @@ class Category cat => Products cat where
 instance Monad m => Products (Kleisli m) where
     (***) = (BadArrow.***)
 
+instance Products (->) where
+    (***) = (BadArrow.***)
+
 -- | A category with finite coproducts.
 class Category cat => Coproducts cat where
     -- | Feed marked inputs through the argument arrow, passing the rest through unchanged to the output.
@@ -72,6 +75,9 @@ class Category cat => Coproducts cat where
     {-# MINIMAL (+++) | left, right #-}
 
 instance Monad m => Coproducts (Kleisli m) where
+    (+++) = (BadArrow.+++)
+
+instance Coproducts (->) where
     (+++) = (BadArrow.+++)
 
 -- | A category @cat@ is a CatPlus when @cat a b@ is a monoid for all a, b.

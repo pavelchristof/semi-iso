@@ -16,6 +16,7 @@ module Control.Category.Reader (
     ) where
 
 import Control.Category
+import Control.Category.Inclusion
 import Control.Category.Structures
 import Control.Lens.Iso
 import Control.Lens.SemiIso
@@ -41,8 +42,17 @@ instance CatPlus cat => CatPlus (ReaderCT env cat) where
     cempty = clift cempty
     ReaderCT f /+/ ReaderCT g = ReaderCT $ \x -> f x /+/ g x
 
-instance SIArrow cat => SIArrow (ReaderCT env cat) where
-    siarr = clift . siarr
+instance Dagger cat => Dagger (ReaderCT env cat) where
+    dagger = ReaderCT . (dagger .) . runReaderCT
+
+instance Concrete cat => Concrete (ReaderCT env cat) where
+    type Repr (ReaderCT env cat) a b = env -> Repr cat a b
+    repr = (repr .) . runReaderCT
+    inst = ReaderCT . (inst .)
+
+instance Arrow cat => Arrow (ReaderCT env cat) where
+    type Base (ReaderCT env cat) = Base cat
+    arr = clift . arr
 
 instance SIBind cat => SIBind (ReaderCT env cat) where
     sibind ai = ReaderCT $ \env -> sibind

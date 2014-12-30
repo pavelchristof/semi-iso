@@ -1,5 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -16,7 +17,7 @@ Categories of reversible computations.
 -}
 module Control.SIArrow (
     -- * Arrow.
-    SIArrow(..),
+    SIArrow,
     SIBind(..),
     (^>>), (>>^), (^<<), (<<^),
     (#>>), (>>#), (#<<), (<<#),
@@ -73,8 +74,8 @@ class SIArrow cat => SIBind cat where
     -- we could break everything anyway using 'siarr'.
     sibind :: ASemiIso a (cat a b) (cat a b) b -> cat a b
 
-instance SIBind cat => SIBind (Dual cat) where
-    sibind ai = Dual $ sibind (iso id getDual . rev ai . iso getDual id)
+--instance SIBind cat => SIBind (Dual cat) where
+--    sibind ai = Dual $ sibind (iso id getDual . rev ai . iso getDual id)
 
 instance SIBind (<~>) where
     sibind ai = ReifiedSemiIso' $

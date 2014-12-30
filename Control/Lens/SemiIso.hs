@@ -2,9 +2,11 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {- |
 Module      :  Control.Lens.SemiIso
 Description :  Semi-isomorphisms.
@@ -100,6 +102,7 @@ module Control.Lens.SemiIso (
 
 import Control.Arrow (Kleisli(..))
 import Control.Category
+import Control.Category.Inclusion
 import Control.Category.Structures
 import Control.Lens.Internal.SemiIso
 import Control.Lens.Iso
@@ -189,6 +192,10 @@ instance Concrete (<~>) where
     type Repr (<~>) a b = ASemiIso' a b
     inst = reifySemiIso
     repr = runSemiIso
+
+instance Arrow (<~>) where
+    type Base (<~>) = (<~>)
+    arr = reifySemiIso
 
 -- | Constructs a semi isomorphism from a pair of functions that can
 -- fail with an error message.

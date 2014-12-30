@@ -1,6 +1,12 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE IncoherentInstances #-}
 {- |
 Module      :  Control.Category.Structures
 Description :  Structures in a category.
@@ -22,8 +28,11 @@ import qualified Control.Arrow as BadArrow
 import           Control.Category
 import           Control.Monad
 import           Data.Semigroupoid.Dual
+import           GHC.Exts (Constraint)
 import           Prelude hiding (id, (.))
 
+infixr 1 ^>>, ^<<, #>>, #<<
+infixr 1 >>^, <<^, >>#, <<#
 infixl 3 ***
 infixl 2 +++
 infixl 3 /+/
@@ -105,9 +114,96 @@ instance CatPlus cat => CatPlus (Dual cat) where
     cempty = Dual cempty
     Dual f /+/ Dual g = Dual $ f /+/ g
 
+-- | An embedding from a subcategory @sub@ to category @cat@.
+type Embedding sub cat = forall a b. sub a b -> cat a b
+
 -- | A category transformer.
 class CatTrans t where
     -- | Lift an arrow from the base category.
-    clift :: Category cat => cat a b -> t cat a b
+    clift :: Category cat => Embedding cat (t cat)
 
-    {-# MINIMAL clift #-}
+-- | A concrete category, representable in Hask.
+class Category cat => Concrete cat where
+    type Repr cat a b :: *
+    repr :: cat a b -> Repr cat a b
+    inst :: Repr cat a b -> cat a b
+
+instance Concrete cat => Concrete (Dual cat) where
+    type Repr (Dual cat) a b = Repr cat b a
+    repr = repr . getDual
+    inst = getDual . inst
+
+class (Category sub, Category cat) => sub <: cat where
+    embed :: Embedding sub cat
+
+instance Category cat => cat <: cat where
+    embed = id
+
+instance (sub <: cat) => Dual sub <: Dual cat where
+    embed = Dual . embed . getDual
+
+--class (Category (Over cat), Category cat) => Restriction cat where
+--    type Over cat :: * -> * -> *
+--    inclusion :: Embedding cat (Over cat)
+
+-- | A subcategory relation.
+--class sub <: cat where
+--    embed :: Embedding sub cat
+
+--instance x <: x where
+--    embed = id
+
+--instance (Restriction x, Over x <: y) => x <: y where
+--    embed = embed . inclusion
+
+type Dagger cat = cat <: Dual cat
+
+dagger :: Dagger cat => cat a b -> cat b a
+dagger = getDual . embed
+
+--arr :: (sub <: cat, Concrete sub) => Embedding (Repr sub) cat
+--arr = _
+
+-- | An arrow is a category that embeds some concrete category.
+class (Concrete (Base cat), Base cat <: cat) => Arrow cat where
+    type Base cat :: * -> * -> *
+    arr :: Embedding (Repr (Base cat)) cat
+
+instance Arrow cat => Arrow (Dual cat) where
+    type Base (Dual cat) = Dual (Base cat)
+    arr = Dual . arr
+
+rarr :: (Arrow cat, Dagger cat) => Repr (Base cat) a b -> cat b a
+rarr = dagger . arr
+
+-- | Composes a function with an arrow.
+(^>>) :: Arrow cat => Repr (Base cat) a b -> cat b c -> cat a c
+f ^>> a = arr f >>> a
+
+-- | Composes an arrow with a function.
+(>>^) :: Arrow cat => cat a b -> Repr (Base cat) b c -> cat a c
+a >>^ f = a >>> arr f
+
+-- | Composes a function with an arrow, backwards.
+(^<<) :: Arrow cat => Repr (Base cat) b c -> cat a b -> cat a c
+f ^<< a = arr f <<< a
+
+-- | Composes an arrow with a function, backwards.
+(<<^) :: Arrow cat => cat b c -> Repr (Base cat) a b -> cat a c
+a <<^ f = a <<< arr f
+
+-- | Composes the dagger (inverse) of a function with an arrow.
+(#>>) :: (Arrow cat, Dagger cat) => Repr (Base cat) b a -> cat b c -> cat a c
+f #>> a = rarr f >>> a
+
+-- | Composes an arrow with the dagger (inverse) of a function.
+(>>#) :: (Arrow cat, Dagger cat) => cat a b -> Repr (Base cat) c b -> cat a c
+a >># f = a >>> rarr f
+
+-- | Composes the dagger (inverse) of a function with an arrow, backwards.
+(#<<) :: (Arrow cat, Dagger cat) => Repr (Base cat) c b -> cat a b -> cat a c
+f #<< a = rarr f <<< a
+
+-- | Composes an arrow with the dagger (inverse) of a function, backwards.
+(<<#) :: (Arrow cat, Dagger cat) => cat b c -> Repr (Base cat) b a -> cat a c
+a <<# f = a <<< rarr f

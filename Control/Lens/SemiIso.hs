@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -33,7 +34,7 @@ Our semi-isomorphisms will obey weakened laws:
 
 When you see an "Either String a", the String is usually an error message.
 
-Disclaimer: the name "semi-isomorphism" is fictitious and made up for this library. 
+Disclaimer: the name "semi-isomorphism" is fictitious and made up for this library.
 Any resemblance to known mathematical objects of the same name is purely coincidental.
 -}
 module Control.Lens.SemiIso (
@@ -51,7 +52,7 @@ module Control.Lens.SemiIso (
     cloneSemiIso,
 
     -- * Reified semi-isos.
-    ReifiedSemiIso'(..),
+    (<~>)(..),
     reifySemiIso,
 
     -- * Consuming semi-isos.
@@ -110,15 +111,14 @@ import Data.Tuple.Morph
 import Prelude hiding (id, (.))
 
 -- | A semi-isomorphism is a partial isomorphism with weakened laws.
--- 
--- Should satisfy laws:
--- 
--- > apply i   >=> unapply i >=> apply i   = apply i
--- > unapply i >=> apply i   >=> unapply i = unapply i
+--
+-- Should satisfy law:
+--
+-- > si . rev si . si = si
 --
 -- Every 'Prism' is a 'SemiIso'.
 -- Every 'Iso' is a 'Prism'.
-type SemiIso s t a b = forall p f. (Exposed (Either String) p, Traversable f) 
+type SemiIso s t a b = forall p f. (Exposed (Either String) p, Traversable f)
                      => p a (f b) -> p s (f t)
 
 -- | Non-polymorphic variant of 'SemiIso'.
@@ -135,13 +135,13 @@ type ASemiIso' s a = ASemiIso s s a a
 pattern SemiIso sa bt <- (viewSemiIso -> (sa, bt))
 
 -- | A semi-iso stored in a container.
-newtype ReifiedSemiIso' s a = ReifiedSemiIso' { runSemiIso :: SemiIso' s a }
+newtype s <~> a = ReifiedSemiIso' { runSemiIso :: SemiIso' s a }
 
-instance Category ReifiedSemiIso' where
+instance Category (<~>) where
     id = ReifiedSemiIso' id
     ReifiedSemiIso' f . ReifiedSemiIso' g = ReifiedSemiIso' (g . f)
 
-instance Products ReifiedSemiIso' where
+instance Products (<~>) where
     -- TODO: pattern synonyms dont work here for some reason
     first (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
         ReifiedSemiIso' $ cloneSemiIso $
@@ -158,7 +158,7 @@ instance Products ReifiedSemiIso' where
             semiIso (runKleisli $ Kleisli f *** Kleisli f')
                     (runKleisli $ Kleisli g *** Kleisli g')
 
-instance Coproducts ReifiedSemiIso' where
+instance Coproducts (<~>) where
     left (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
         ReifiedSemiIso' $ cloneSemiIso $
             semiIso (runKleisli $ left $ Kleisli f)
@@ -174,13 +174,21 @@ instance Coproducts ReifiedSemiIso' where
             semiIso (runKleisli $ Kleisli f +++ Kleisli f')
                     (runKleisli $ Kleisli g +++ Kleisli g')
 
-instance CatPlus ReifiedSemiIso' where
+instance CatPlus (<~>) where
     cempty = ReifiedSemiIso' $ alwaysFailing "cempty"
 
     ReifiedSemiIso' ai /+/ ReifiedSemiIso' ai' = ReifiedSemiIso' $
         withSemiIso ai $ \f g -> withSemiIso ai' $ \f' g' ->
             semiIso (runKleisli $ Kleisli f /+/ Kleisli f')
                     (runKleisli $ Kleisli g /+/ Kleisli g')
+
+instance Dagger (<~>) where
+    dagger = reifySemiIso . rev . runSemiIso
+
+instance Concrete (<~>) where
+    type Repr (<~>) a b = ASemiIso' a b
+    inst = reifySemiIso
+    repr = runSemiIso
 
 -- | Constructs a semi isomorphism from a pair of functions that can
 -- fail with an error message.
@@ -200,8 +208,8 @@ unapply :: ASemiIso s t a b -> b -> Either String t
 unapply (SemiIso _ bt) = bt
 
 -- | Extracts the two functions that characterize the 'SemiIso'.
-withSemiIso :: ASemiIso s t a b 
-            -> ((s -> Either String a) -> (b -> Either String t) -> r) 
+withSemiIso :: ASemiIso s t a b
+            -> ((s -> Either String a) -> (b -> Either String t) -> r)
             -> r
 withSemiIso ai k = case ai (Retail Right (Right . Identity)) of
                         Retail sa bt -> k sa (rmap (runIdentity . sequenceA) bt)
@@ -211,7 +219,7 @@ viewSemiIso :: ASemiIso s t a b -> (s -> Either String a, b -> Either String t)
 viewSemiIso ai = withSemiIso ai (,)
 
 -- | Reifies a semi-iso.
-reifySemiIso :: ASemiIso' s a -> ReifiedSemiIso' s a
+reifySemiIso :: ASemiIso' s a -> s <~> a
 reifySemiIso ai = ReifiedSemiIso' $ cloneSemiIso ai
 
 -- | A trivial isomorphism between a and (a, ()).
@@ -384,7 +392,7 @@ bifoldr = bifoldr_ . attemptAp_
 
 -- | Constructs a bidirectional fold. Works with prisms.
 --
--- \-> Right unfolds using the (->) part of the given semi-iso, until it fails. 
+-- \-> Right unfolds using the (->) part of the given semi-iso, until it fails.
 -- It should produce a non-empty list.
 --
 -- \<- Right folds a non-empty list using the (<-) part of the given semi-iso.
@@ -401,7 +409,7 @@ bifoldl = bifoldl_ . attemptAp_
 
 -- | Constructs a bidirectional fold. Works with prisms.
 --
--- \-> Left unfolds using the (->) part of the given semi-iso, until it fails. 
+-- \-> Left unfolds using the (->) part of the given semi-iso, until it fails.
 -- It should produce a non-empty list.
 --
 -- \<- Left folds a non-empty list using the (<-) part of the given semi-iso.

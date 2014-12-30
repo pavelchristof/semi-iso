@@ -43,5 +43,7 @@ instance CatPlus cat => CatPlus (ReaderCT env cat) where
 
 instance SIArrow cat => SIArrow (ReaderCT env cat) where
     siarr = clift . siarr
+
+instance SIBind cat => SIBind (ReaderCT env cat) where
     sibind ai = ReaderCT $ \env -> sibind
         (iso id (flip runReaderCT env) . cloneSemiIso ai . iso (flip runReaderCT env) id)

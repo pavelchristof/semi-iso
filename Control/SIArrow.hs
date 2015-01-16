@@ -76,9 +76,9 @@ class SIArrow cat => SIBind cat where
 --    sibind ai = Dual $ sibind (iso id getDual . rev ai . iso getDual id)
 
 instance SIBind (<~>) where
-    sibind ai = ReifiedSemiIso' $
-        semiIso (\a -> apply ai a >>= flip apply a . runSemiIso)
-                (\b -> unapply ai b >>= flip unapply b . runSemiIso)
+    sibind ai = ReifiedSI $
+        semiIso (\a -> apply ai a >>= flip apply a . getSemiIso)
+                (\b -> unapply ai b >>= flip unapply b . getSemiIso)
 
 -- | Postcomposes an arrow with a reversed SemiIso.
 -- The analogue of '<$>' and synonym for '#<<'.

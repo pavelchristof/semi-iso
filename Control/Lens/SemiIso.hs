@@ -137,60 +137,60 @@ type ASemiIso' s a = ASemiIso s s a a
 pattern SemiIso sa bt <- (viewSemiIso -> (sa, bt))
 
 -- | A semi-iso stored in a container.
-newtype s <~> a = ReifiedSemiIso' { runSemiIso :: SemiIso' s a }
+newtype s <~> a = ReifiedSI { getSemiIso :: SemiIso' s a }
 
 instance Category (<~>) where
-    id = ReifiedSemiIso' id
-    ReifiedSemiIso' f . ReifiedSemiIso' g = ReifiedSemiIso' (g . f)
+    id = ReifiedSI id
+    ReifiedSI f . ReifiedSI g = ReifiedSI (g . f)
 
 instance Products (<~>) where
     -- TODO: pattern synonyms dont work here for some reason
-    first (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
-        ReifiedSemiIso' $ cloneSemiIso $
+    first (ReifiedSI ai) = withSemiIso ai $ \f g ->
+        ReifiedSI $ cloneSemiIso $
             semiIso (runKleisli $ first $ Kleisli f)
                     (runKleisli $ first $ Kleisli g)
 
-    second (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
-        ReifiedSemiIso' $ cloneSemiIso $
+    second (ReifiedSI ai) = withSemiIso ai $ \f g ->
+        ReifiedSI $ cloneSemiIso $
             semiIso (runKleisli $ second $ Kleisli f)
                     (runKleisli $ second $ Kleisli g)
 
-    ReifiedSemiIso' ai *** ReifiedSemiIso' ai' = ReifiedSemiIso' $
+    ReifiedSI ai *** ReifiedSI ai' = ReifiedSI $
         withSemiIso ai $ \f g -> withSemiIso ai' $ \f' g' ->
             semiIso (runKleisli $ Kleisli f *** Kleisli f')
                     (runKleisli $ Kleisli g *** Kleisli g')
 
 instance Coproducts (<~>) where
-    left (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
-        ReifiedSemiIso' $ cloneSemiIso $
+    left (ReifiedSI ai) = withSemiIso ai $ \f g ->
+        ReifiedSI $ cloneSemiIso $
             semiIso (runKleisli $ left $ Kleisli f)
                     (runKleisli $ left $ Kleisli g)
 
-    right (ReifiedSemiIso' ai) = withSemiIso ai $ \f g ->
-        ReifiedSemiIso' $ cloneSemiIso $
+    right (ReifiedSI ai) = withSemiIso ai $ \f g ->
+        ReifiedSI $ cloneSemiIso $
             semiIso (runKleisli $ right $ Kleisli f)
                     (runKleisli $ right $ Kleisli g)
 
-    ReifiedSemiIso' ai +++ ReifiedSemiIso' ai' = ReifiedSemiIso' $
+    ReifiedSI ai +++ ReifiedSI ai' = ReifiedSI $
         withSemiIso ai $ \f g -> withSemiIso ai' $ \f' g' ->
             semiIso (runKleisli $ Kleisli f +++ Kleisli f')
                     (runKleisli $ Kleisli g +++ Kleisli g')
 
 instance Monoidal (<~>) where
-    cempty = ReifiedSemiIso' $ alwaysFailing "cempty"
+    cempty = ReifiedSI $ alwaysFailing "cempty"
 
-    ReifiedSemiIso' ai /+/ ReifiedSemiIso' ai' = ReifiedSemiIso' $
+    ReifiedSI ai /+/ ReifiedSI ai' = ReifiedSI $
         withSemiIso ai $ \f g -> withSemiIso ai' $ \f' g' ->
             semiIso (runKleisli $ Kleisli f /+/ Kleisli f')
                     (runKleisli $ Kleisli g /+/ Kleisli g')
 
 instance Dagger (<~>) where
-    dagger = reifySemiIso . rev . runSemiIso
+    dagger = reifySemiIso . rev . getSemiIso
 
 instance SubHask (<~>) where
     type HaskRep (<~>) a b = ASemiIso' a b
     fromHask = reifySemiIso
-    toHask   = runSemiIso
+    toHask   = getSemiIso
 
 instance GArrow (<~>) where
     type Base (<~>) = (<~>)
@@ -226,7 +226,7 @@ viewSemiIso ai = withSemiIso ai (,)
 
 -- | Reifies a semi-iso.
 reifySemiIso :: ASemiIso' s a -> s <~> a
-reifySemiIso ai = ReifiedSemiIso' $ cloneSemiIso ai
+reifySemiIso ai = ReifiedSI $ cloneSemiIso ai
 
 -- | A trivial isomorphism between a and (a, ()).
 unit :: Iso' a (a, ())
@@ -293,7 +293,7 @@ rev ai = withSemiIso ai $ \l r -> semiIso r l
 
 -- | A product of semi-isos.
 prod :: ASemiIso' s a -> ASemiIso' t b -> SemiIso' (s, t) (a, b)
-prod a b = runSemiIso (reifySemiIso a *** reifySemiIso b)
+prod a b = getSemiIso (reifySemiIso a *** reifySemiIso b)
 
 -- | Uses an @SemiIso' a ()@ to construct a @SemiIso' (a, b) b@,
 -- i.e. eliminates the first pair element.
@@ -303,7 +303,7 @@ elimFirst ai = swapped . elimSecond ai
 -- | Uses an @SemiIso b ()@ to construct a @SemiIso (a, b) a@,
 -- i.e. eliminates the second pair element.
 elimSecond :: ASemiIso' s () -> SemiIso' (t, s) t
-elimSecond ai = runSemiIso (id *** reifySemiIso ai) . rev unit
+elimSecond ai = getSemiIso (id *** reifySemiIso ai) . rev unit
 
 -- | Transforms the semi-iso so that applying it in both directions never fails,
 -- but instead catches any errors and returns them as an @Either String a@.

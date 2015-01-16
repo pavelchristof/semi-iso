@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
@@ -22,7 +23,6 @@ module Control.Category.Structures where
 import           Control.Arrow (Kleisli(..))
 import qualified Control.Arrow as BadArrow
 import           Control.Category
-import           Control.Category.Inclusion
 import           Control.Monad
 import           Data.Semigroupoid.Dual
 import           Prelude hiding (id, (.))
@@ -93,8 +93,8 @@ instance Coproducts cat => Coproducts (Dual cat) where
 instance Coproducts (->) where
     (+++) = (BadArrow.+++)
 
--- | A category @cat@ is a CatPlus when @cat a b@ is a monoid for all a, b.
-class Category cat => CatPlus cat where
+-- | A strict monoidal category.
+class Category cat => Monoidal cat where
     -- | The identity of '/+/'.
     cempty :: cat a b
     -- | An associative operation on arrows.
@@ -102,57 +102,91 @@ class Category cat => CatPlus cat where
 
     {-# MINIMAL cempty, (/+/) #-}
 
-instance MonadPlus m => CatPlus (Kleisli m) where
+instance MonadPlus m => Monoidal (Kleisli m) where
     cempty = BadArrow.zeroArrow
     (/+/)  = (BadArrow.<+>)
 
-instance CatPlus cat => CatPlus (Dual cat) where
+instance Monoidal cat => Monoidal (Dual cat) where
     cempty = Dual cempty
     Dual f /+/ Dual g = Dual $ f /+/ g
 
+-- | A dagger category.
+--
+-- prop> dagger id = id
+-- prop> dagger f . dagger g = dagger (g . f)
+-- prop> dagger . dagger = id
 class Category cat => Dagger cat where
     dagger :: cat a b -> cat b a
 
--- | An arrow is a category that embeds some concrete category.
-class (Concrete (Base cat), Category cat) => Arrow cat where
-    type Base cat :: * -> * -> *
-    arr :: Inclusion (Repr (Base cat)) cat
+instance Dagger cat => Dagger (Dual cat) where
+    dagger = Dual . dagger . getDual
 
-instance Arrow cat => Arrow (Dual cat) where
+-- | A category isomophic to a subcategory Hask.
+--
+-- prop> toHask (f . g) = toHask f . toHask g
+-- prop> fromHask (f . g) = fromHask f . fromHask g
+-- prop> toHask . fromHask = id
+-- prop> fromHask . toHask = id
+class Category cat => SubHask (cat :: k -> k -> *) where
+    type HaskRep (cat :: k -> k -> *) (a :: k) (b :: k)
+    toHask   :: cat a b -> HaskRep cat a b
+    fromHask :: HaskRep cat a b -> cat a b
+
+instance SubHask cat => SubHask (Dual cat) where
+    type HaskRep (Dual cat) a b = HaskRep cat b a
+    toHask   = toHask . getDual
+    fromHask = getDual . fromHask
+
+-- | A generalized arrow is a category that extends some subcategory of Hask.
+class (SubHask (Base cat), Category cat) => GArrow cat where
+    type Base cat :: * -> * -> *
+    -- | Lifts a function.
+    arr :: HaskRep (Base cat) a b -> cat a b
+
+instance GArrow cat => GArrow (Dual cat) where
     type Base (Dual cat) = Dual (Base cat)
     arr = Dual . arr
 
-rarr :: (Arrow cat, Dagger cat) => Repr (Base cat) a b -> cat b a
+-- | An arrow is a category that extends Hask.
+type Arrow cat = (GArrow cat, Base cat ~ (->))
+
+-- | 'arr' combined with 'dagger'.
+rarr :: (GArrow cat, Dagger cat) => HaskRep (Base cat) a b -> cat b a
 rarr = dagger . arr
 
 -- | Composes a function with an arrow.
-(^>>) :: Arrow cat => Repr (Base cat) a b -> cat b c -> cat a c
+(^>>) :: GArrow cat => HaskRep (Base cat) a b -> cat b c -> cat a c
 f ^>> a = arr f >>> a
 
 -- | Composes an arrow with a function.
-(>>^) :: Arrow cat => cat a b -> Repr (Base cat) b c -> cat a c
+(>>^) :: GArrow cat => cat a b -> HaskRep (Base cat) b c -> cat a c
 a >>^ f = a >>> arr f
 
 -- | Composes a function with an arrow, backwards.
-(^<<) :: Arrow cat => Repr (Base cat) b c -> cat a b -> cat a c
+(^<<) :: GArrow cat => HaskRep (Base cat) b c -> cat a b -> cat a c
 f ^<< a = arr f <<< a
 
 -- | Composes an arrow with a function, backwards.
-(<<^) :: Arrow cat => cat b c -> Repr (Base cat) a b -> cat a c
+(<<^) :: GArrow cat => cat b c -> HaskRep (Base cat) a b -> cat a c
 a <<^ f = a <<< arr f
 
 -- | Composes the dagger (inverse) of a function with an arrow.
-(#>>) :: (Arrow cat, Dagger cat) => Repr (Base cat) b a -> cat b c -> cat a c
+(#>>) :: (GArrow cat, Dagger cat) => HaskRep (Base cat) b a -> cat b c -> cat a c
 f #>> a = rarr f >>> a
 
 -- | Composes an arrow with the dagger (inverse) of a function.
-(>>#) :: (Arrow cat, Dagger cat) => cat a b -> Repr (Base cat) c b -> cat a c
+(>>#) :: (GArrow cat, Dagger cat) => cat a b -> HaskRep (Base cat) c b -> cat a c
 a >># f = a >>> rarr f
 
 -- | Composes the dagger (inverse) of a function with an arrow, backwards.
-(#<<) :: (Arrow cat, Dagger cat) => Repr (Base cat) c b -> cat a b -> cat a c
+(#<<) :: (GArrow cat, Dagger cat) => HaskRep (Base cat) c b -> cat a b -> cat a c
 f #<< a = rarr f <<< a
 
 -- | Composes an arrow with the dagger (inverse) of a function, backwards.
-(<<#) :: (Arrow cat, Dagger cat) => cat b c -> Repr (Base cat) b a -> cat a c
+(<<#) :: (GArrow cat, Dagger cat) => cat b c -> HaskRep (Base cat) b a -> cat a c
 a <<# f = a <<< rarr f
+
+-- | A category transformer.
+class CatTrans t where
+    -- | Lift an arrow from the base category.
+    clift :: Category cat => cat a b -> t cat a b

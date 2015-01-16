@@ -102,7 +102,6 @@ module Control.Lens.SemiIso (
 
 import Control.Arrow (Kleisli(..))
 import Control.Category
-import Control.Category.Inclusion
 import Control.Category.Structures
 import Control.Lens.Internal.SemiIso
 import Control.Lens.Iso
@@ -177,7 +176,7 @@ instance Coproducts (<~>) where
             semiIso (runKleisli $ Kleisli f +++ Kleisli f')
                     (runKleisli $ Kleisli g +++ Kleisli g')
 
-instance CatPlus (<~>) where
+instance Monoidal (<~>) where
     cempty = ReifiedSemiIso' $ alwaysFailing "cempty"
 
     ReifiedSemiIso' ai /+/ ReifiedSemiIso' ai' = ReifiedSemiIso' $
@@ -188,12 +187,12 @@ instance CatPlus (<~>) where
 instance Dagger (<~>) where
     dagger = reifySemiIso . rev . runSemiIso
 
-instance Concrete (<~>) where
-    type Repr (<~>) a b = ASemiIso' a b
-    inst = reifySemiIso
-    repr = runSemiIso
+instance SubHask (<~>) where
+    type HaskRep (<~>) a b = ASemiIso' a b
+    fromHask = reifySemiIso
+    toHask   = runSemiIso
 
-instance Arrow (<~>) where
+instance GArrow (<~>) where
     type Base (<~>) = (<~>)
     arr = reifySemiIso
 

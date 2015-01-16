@@ -16,7 +16,6 @@ module Control.Category.Reader (
     ) where
 
 import Control.Category
-import Control.Category.Inclusion
 import Control.Category.Structures
 import Control.Lens.Iso
 import Control.Lens.SemiIso
@@ -38,19 +37,19 @@ instance Products cat => Products (ReaderCT env cat) where
 instance Coproducts cat => Coproducts (ReaderCT env cat) where
     ReaderCT f +++ ReaderCT g = ReaderCT $ \x -> f x +++ g x
 
-instance CatPlus cat => CatPlus (ReaderCT env cat) where
+instance Monoidal cat => Monoidal (ReaderCT env cat) where
     cempty = clift cempty
     ReaderCT f /+/ ReaderCT g = ReaderCT $ \x -> f x /+/ g x
 
 instance Dagger cat => Dagger (ReaderCT env cat) where
     dagger = ReaderCT . (dagger .) . runReaderCT
 
-instance Concrete cat => Concrete (ReaderCT env cat) where
-    type Repr (ReaderCT env cat) a b = env -> Repr cat a b
-    repr = (repr .) . runReaderCT
-    inst = ReaderCT . (inst .)
+instance SubHask cat => SubHask (ReaderCT env cat) where
+    type HaskRep (ReaderCT env cat) a b = env -> HaskRep cat a b
+    toHask   = (toHask .) . runReaderCT
+    fromHask = ReaderCT . (fromHask .)
 
-instance Arrow cat => Arrow (ReaderCT env cat) where
+instance GArrow cat => GArrow (ReaderCT env cat) where
     type Base (ReaderCT env cat) = Base cat
     arr = clift . arr
 

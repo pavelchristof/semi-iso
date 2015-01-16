@@ -38,7 +38,6 @@ module Control.SIArrow (
     sireplicate_
     ) where
 
-import Control.Arrow (Kleisli(..))
 import Control.Category
 import Control.Category.Structures
 import Control.Lens.Cons
@@ -46,7 +45,6 @@ import Control.Lens.Empty
 import Control.Lens.Iso
 import Control.Lens.SemiIso
 import Control.Monad
-import Data.Semigroupoid.Dual
 import Data.Tuple.Morph
 import Prelude hiding (id, (.))
 
@@ -59,7 +57,7 @@ type SIArrow cat = ( Category cat
                    , Products cat
                    , Coproducts cat
                    , Dagger cat
-                   , Arrow cat
+                   , GArrow cat
                    , Base cat ~ (<~>)
                    )
 
@@ -128,15 +126,15 @@ sifail :: SIArrow cat => String -> cat a b
 sifail = arr . alwaysFailing
 
 -- | Provides an error message in the case of failure.
-(/?/) :: (SIArrow cat, CatPlus cat) => cat a b -> String -> cat a b
+(/?/) :: (SIArrow cat, Monoidal cat) => cat a b -> String -> cat a b
 f /?/ msg = f /+/ sifail msg
 
 -- | @sisome v@ repeats @v@ as long as possible, but no less then once.
-sisome :: (SIArrow cat, CatPlus cat) => cat () b -> cat () [b]
+sisome :: (SIArrow cat, Monoidal cat) => cat () b -> cat () [b]
 sisome v = _Cons /$/ v /*/ simany v
 
 -- | @simany v@ repeats @v@ as long as possible.
-simany :: (SIArrow cat, CatPlus cat) => cat () b -> cat () [b]
+simany :: (SIArrow cat, Monoidal cat) => cat () b -> cat () [b]
 simany v = sisome v /+/ rarr _Empty
 
 -- | Equivalent of 'sequence'.

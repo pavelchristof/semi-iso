@@ -64,7 +64,6 @@ library
                        Control.Lens.Internal.SemiIso
                        Control.SIArrow
                        Control.Category.Reader
-                       Control.Category.Inclusion
                        Control.Category.Structures
                        Data.Profunctor.Exposed
   build-depends:       base >= 4 && < 5, profunctors, transformers, lens, tuple-morph, semigroupoids

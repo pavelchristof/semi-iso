@@ -18,7 +18,31 @@ way then "Control.Arrow".
 
 Unfortunately names in this module clash with "Control.Arrow".
 -}
-module Control.Category.Structures where
+module Control.Category.Structures (
+    -- * Products and coproducts.
+    Products(..),
+    Coproducts(..),
+    -- * Cloning, deleting, choosing and answering.
+    Cloning(..),
+    Deleting(..),
+    Choosing(..),
+    Answering(..),
+    -- * Monoidal and dagger categories.
+    Monoidal(..),
+    Dagger(..),
+    -- * Subcategories of Hask.
+    SubHask(..),
+    -- * Generalized arrow.
+    GArrow(..),
+    rarr,
+    Arrow,
+    ArrowChoice,
+    -- * Composition with functions.
+    (^>>), (^<<), (>>^), (<<^),
+    (#>>), (#<<), (>>#), (<<#),
+    -- * Category transformers.
+    CatTrans(..)
+    ) where
 
 import           Control.Arrow (Kleisli(..))
 import qualified Control.Arrow as BadArrow
@@ -93,6 +117,61 @@ instance Coproducts cat => Coproducts (Dual cat) where
 instance Coproducts (->) where
     (+++) = (BadArrow.+++)
 
+-- Categories that allow cloning.
+class Products cat => Cloning cat where
+    -- | An arrow that clones its input.
+    clone :: cat a (a, a)
+    clone = id &&& id
+
+    -- | Fanout: send the input to both argument arrows and combine their output.
+    (&&&) :: cat a b -> cat a b' -> cat a (b, b')
+    f &&& g = clone >>> f *** g
+
+    {-# MINIMAL clone | (&&&) #-}
+
+instance Cloning (->) where
+    clone x = (x, x)
+    (f &&& g) x = (f x, g x)
+
+instance Deleting cat => Cloning (Dual cat) where
+    clone = Dual delete
+    Dual f &&& Dual g = Dual $ f *** g >>> delete
+
+-- | Categories that allow deleting.
+class Products cat => Deleting cat where
+    -- | An arrow that deletes one of its "inputs".
+    delete :: cat (a, a) a
+
+instance Cloning cat => Deleting (Dual cat) where
+    delete = Dual clone
+
+-- | Categories with fanin.
+class Coproducts cat => Choosing cat where
+    choose :: cat (Either b b) b
+    choose = id ||| id
+
+    -- | Fanin: Split the input between the two argument arrows and merge their outputs.
+    (|||) :: cat a b -> cat a' b -> cat (Either a a') b
+    f ||| g = f +++ g >>> choose
+
+    {-# MINIMAL choose | (|||) #-}
+
+instance Choosing (->) where
+    choose = either id id
+    (f ||| _) (Left x) = f x
+    (_ ||| g) (Right x) = g x
+
+instance Answering cat => Choosing (Dual cat) where
+    choose = Dual answer
+    Dual f ||| Dual g = Dual $ answer >>> f +++ g
+
+-- | The dual of 'Choosing'.
+class Coproducts cat => Answering cat where
+    answer :: cat b (Either b b)
+
+instance Choosing cat => Answering (Dual cat) where
+    answer = Dual choose
+
 -- | A strict monoidal category.
 class Category cat => Monoidal cat where
     -- | The identity of '/+/'.
@@ -138,6 +217,9 @@ instance SubHask cat => SubHask (Dual cat) where
     fromHask = getDual . fromHask
 
 -- | A generalized arrow is a category that extends some subcategory of Hask.
+--
+-- prop> arr id = id
+-- prop> arr f . arr g = arr (f . g)
 class (SubHask (Base cat), Category cat) => GArrow cat where
     type Base cat :: * -> * -> *
     -- | Lifts a function.
@@ -147,10 +229,21 @@ instance GArrow cat => GArrow (Dual cat) where
     type Base (Dual cat) = Dual (Base cat)
     arr = Dual . arr
 
--- | An arrow is a category that extends Hask.
-type Arrow cat = (GArrow cat, Base cat ~ (->))
+-- | The usual 'Control.Arrow.Arrow'.
+type Arrow cat = ( GArrow cat
+                 , Base cat ~ (->)
+                 , Products cat
+                 , Cloning cat
+                 )
 
--- | 'arr' combined with 'dagger'.
+-- | The usual 'Control.Arrow.ArrowChoice'.
+type ArrowChoice cat = ( Arrow cat
+                       , Coproducts cat
+                       , Choosing cat)
+
+-- | Reverse 'arr'.
+--
+-- > rarr = dagger . arr
 rarr :: (GArrow cat, Dagger cat) => HaskRep (Base cat) a b -> cat b a
 rarr = dagger . arr
 

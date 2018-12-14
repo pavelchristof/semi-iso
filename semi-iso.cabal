@@ -67,7 +67,7 @@ library
                        Control.Category.Reader
                        Control.Category.Structures
                        Data.Profunctor.Exposed
-  build-depends:       base          >= 4
+  build-depends:       base          >= 4.9 && <4.13
                      , profunctors   == 5.*
                      , transformers
                      , lens          == 4.*

@@ -64,7 +64,6 @@ module Control.Lens.SemiIso (
     unit,
     swapped,
     associated,
-    morphed,
     constant,
     exact,
     bifiltered,
@@ -106,7 +105,6 @@ import Data.Foldable
 import Data.Functor.Identity
 import Data.Profunctor.Exposed
 import Data.Traversable
-import Data.Tuple.Morph
 import Prelude hiding (id, (.))
 
 -- | A semi-isomorphism is a partial isomorphism with weakened laws.
@@ -221,14 +219,6 @@ unit = iso (, ()) fst
 -- | Products are associative.
 associated :: Iso' (a, (b, c)) ((a, b), c)
 associated = iso (\(a, (b, c)) -> ((a, b), c)) (\((a, b), c) -> (a, (b, c)))
-
--- | An isomorphism between two arbitrary nested tuples, as long the contained
--- types (ignoring units!) read from left to right are the same.
---
--- This is implemented using 'Data.Tuple.Morph.morph' from 'tuple-morph'.
-morphed :: (HFoldable a, HUnfoldable a, HFoldable b, HUnfoldable b, Rep a ~ Rep b)
-        => Iso' a b
-morphed = iso morph morph
 
 -- | \-> Always returns the argument.
 --

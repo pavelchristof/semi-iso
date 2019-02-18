@@ -53,7 +53,8 @@ maintainer:          Paweł Nowak <pawel834@gmail.com>
 copyright:           Paweł Nowak 2014
 category:            Control, Data
 build-type:          Simple
-cabal-version:       >=1.10
+cabal-version:       >=1.11
+Tested-with:         GHC==8.0.2, GHC==8.2.2, GHC==8.4.3, GHC==8.6.1
 
 source-repository head
   type:     git
@@ -66,6 +67,10 @@ library
                        Control.Category.Reader
                        Control.Category.Structures
                        Data.Profunctor.Exposed
-  build-depends:       base >= 4 && < 5, profunctors, transformers, lens, tuple-morph, semigroupoids
+  build-depends:       base          >= 4.9 && <4.13
+                     , profunctors   == 5.*
+                     , transformers
+                     , lens          == 4.*
+                     , semigroupoids
   default-language:    Haskell2010
   ghc-options:         -Wall
